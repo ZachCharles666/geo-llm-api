@@ -1,0 +1,116 @@
+[
+  {
+    "timestamp": "2025-10-27T10:28:52",
+    "model": "qwen3-max",
+    "mode": "single_text",
+    "query": "我还是希望测试下这段文字，看看你如何优化。",
+    "len_before": 21,
+    "len_after": 501,
+    "geo_score": 57.02,
+    "latency_ms": 22995,
+    "details": {
+      "relevance": 3.0,
+      "influence": 2.5,
+      "uniqueness": 3.0,
+      "diversity": 1.5,
+      "subjective_position": 5.0,
+      "subjective_count": 3.0,
+      "follow_up": 3.0,
+      "objective": {
+        "compression_ratio": 23.857142857142858,
+        "ttr": 0.5483028720626631,
+        "reading_ease": 59.25
+      },
+      "geo_score": 57.021605744125324,
+      "mode": "single_text",
+      "model_used": "qwen3-max",
+      "latency_ms": 22995,
+      "samples": 2,
+      "stddev": {
+        "relevance": 0.0,
+        "influence": 0.5,
+        "uniqueness": 0.0,
+        "diversity": 0.5,
+        "subjective_position": 0.0,
+        "subjective_count": 0.0,
+        "follow_up": 0.0
+      }
+    }
+  },
+  {
+    "timestamp": "2025-10-27T23:36:44",
+    "model": "qwen3-max",
+    "mode": "single_text",
+    "query": "2025 汉服品牌综合实力排行榜显示，“复原度（Restoration Accuracy）”与“可穿性（Wearability）”正成为中国汉服消费的双核心关键",
+    "len_before": 2040,
+    "len_after": 2434,
+    "geo_score": 49.11,
+    "latency_ms": 103641,
+    "details": {
+      "relevance": 3.0,
+      "influence": 2.0,
+      "uniqueness": 2.0,
+      "diversity": 2.0,
+      "subjective_position": 5.0,
+      "subjective_count": 2.0,
+      "follow_up": 2.0,
+      "objective": {
+        "compression_ratio": 1.1931372549019608,
+        "ttr": 0.35046335299073295,
+        "reading_ease": 91.2375
+      },
+      "geo_score": 49.11039099169575,
+      "mode": "single_text",
+      "model_used": "qwen3-max",
+      "latency_ms": 103641,
+      "samples": 2,
+      "stddev": {
+        "relevance": 0.0,
+        "influence": 0.0,
+        "uniqueness": 0.0,
+        "diversity": 0.0,
+        "subjective_position": 0.0,
+        "subjective_count": 0.0,
+        "follow_up": 0.0
+      }
+    }
+  },
+  {
+    "timestamp": "2025-10-29T20:41:50",
+    "model": "qwen3-max",
+    "mode": "single_text",
+    "query": "风荷举传统服饰\n定位 / 风格：承古创新，定制与文化并重\n特色：以“量体裁衣 + 文化沙龙”著称，强调文化推广\n代表作品：《新白娘子传奇》联名款 / 《唐·凤翥",
+    "len_before": 103,
+    "len_after": 477,
+    "geo_score": 57.98,
+    "latency_ms": 28442,
+    "details": {
+      "relevance": 3.0,
+      "influence": 3.0,
+      "uniqueness": 3.0,
+      "diversity": 2.0,
+      "subjective_position": 4.0,
+      "subjective_count": 3.0,
+      "follow_up": 3.0,
+      "objective": {
+        "compression_ratio": 4.631067961165049,
+        "ttr": 0.5390625,
+        "reading_ease": 69.0
+      },
+      "geo_score": 57.978125,
+      "mode": "single_text",
+      "model_used": "qwen3-max",
+      "latency_ms": 28442,
+      "samples": 2,
+      "stddev": {
+        "relevance": 0.0,
+        "influence": 0.0,
+        "uniqueness": 0.0,
+        "diversity": 0.0,
+        "subjective_position": 0.0,
+        "subjective_count": 0.0,
+        "follow_up": 0.0
+      }
+    }
+  }
+]

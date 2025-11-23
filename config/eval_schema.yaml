@@ -1,0 +1,17 @@
+version: 1.0.0
+logic_chain:
+  node_count: {min: 3, max: 8, optimal: [4,5,6]}
+evidence_chain:
+  categories: [data, industry, media]
+  custom_categories_allowed: true
+exposure_goals:
+  match_threshold: 0.8
+title:
+  count_range: [2,3]
+weights:
+  structure_completeness: 0.2
+  evidence_alignment: 0.2
+  exposure_coverage: 0.2
+  title_usability: 0.2
+  logic_consistency: 0.1
+  executability: 0.1

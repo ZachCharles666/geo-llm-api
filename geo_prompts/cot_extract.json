@@ -1,0 +1,3 @@
+{
+  "template": "请将以上推理结果转化为以下 JSON 结构，只输出 JSON，不附加说明：\\n{\\n  \"logic_chain\": [\"...\"],\\n  \"strategy_chain\": [\\n    {\"step\": \"\", \"content\": \"\"}\\n  ],\\n  \"titles_by_node\": [\\n    {\"step\": \"\", \"titles\": [\"...\"]}\\n  ]\\n}"
+}
