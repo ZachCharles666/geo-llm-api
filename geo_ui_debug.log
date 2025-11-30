@@ -1,0 +1,166 @@
+2025-11-25 16:22:43,024 [INFO] === GEO-Max UI 启动 ===
+2025-11-25 16:22:43,024 [INFO] Env check: GROQ_API_KEY set? YES
+2025-11-25 16:22:43,024 [INFO] Env check: GEMINI_API_KEY set? YES
+2025-11-25 16:22:43,026 [DEBUG] Using proactor: IocpProactor
+2025-11-25 16:22:43,160 [DEBUG] Using proactor: IocpProactor
+2025-11-25 16:22:44,160 [DEBUG] connect_tcp.started host='127.0.0.1' port=7897 local_address=None timeout=None socket_options=None
+2025-11-25 16:22:44,161 [DEBUG] connect_tcp.complete return_value=<httpcore._backends.sync.SyncStream object at 0x0000016FF544AD80>
+2025-11-25 16:22:44,162 [DEBUG] send_request_headers.started request=<Request [b'GET']>
+2025-11-25 16:22:44,162 [DEBUG] send_request_headers.complete
+2025-11-25 16:22:44,164 [DEBUG] send_request_body.started request=<Request [b'GET']>
+2025-11-25 16:22:44,164 [DEBUG] send_request_body.complete
+2025-11-25 16:22:44,164 [DEBUG] receive_response_headers.started request=<Request [b'GET']>
+2025-11-25 16:22:44,755 [DEBUG] receive_response_headers.complete return_value=(b'HTTP/1.1', 502, b'Bad Gateway', [(b'Connection', b'close'), (b'Content-Length', b'0')])
+2025-11-25 16:22:44,756 [INFO] HTTP Request: GET http://localhost:7860/startup-events "HTTP/1.1 502 Bad Gateway"
+2025-11-25 16:22:44,756 [DEBUG] receive_response_body.started request=<Request [b'GET']>
+2025-11-25 16:22:44,756 [DEBUG] receive_response_body.complete
+2025-11-25 16:22:44,756 [DEBUG] response_closed.started
+2025-11-25 16:22:44,756 [DEBUG] response_closed.complete
+2025-11-25 16:22:44,763 [DEBUG] connect_tcp.started host='127.0.0.1' port=7897 local_address=None timeout=3 socket_options=None
+2025-11-25 16:22:44,765 [DEBUG] connect_tcp.complete return_value=<httpcore._backends.sync.SyncStream object at 0x0000016FF544B920>
+2025-11-25 16:22:44,765 [DEBUG] send_request_headers.started request=<Request [b'HEAD']>
+2025-11-25 16:22:44,765 [DEBUG] send_request_headers.complete
+2025-11-25 16:22:44,765 [DEBUG] send_request_body.started request=<Request [b'HEAD']>
+2025-11-25 16:22:44,766 [DEBUG] send_request_body.complete
+2025-11-25 16:22:44,766 [DEBUG] receive_response_headers.started request=<Request [b'HEAD']>
+2025-11-25 16:22:45,341 [DEBUG] receive_response_headers.complete return_value=(b'HTTP/1.1', 502, b'Bad Gateway', [(b'Connection', b'close'), (b'Content-Length', b'0')])
+2025-11-25 16:22:45,342 [INFO] HTTP Request: HEAD http://localhost:7860/ "HTTP/1.1 502 Bad Gateway"
+2025-11-25 16:22:45,343 [DEBUG] receive_response_body.started request=<Request [b'HEAD']>
+2025-11-25 16:22:45,343 [DEBUG] receive_response_body.complete
+2025-11-25 16:22:45,343 [DEBUG] response_closed.started
+2025-11-25 16:22:45,344 [DEBUG] response_closed.complete
+2025-11-25 16:22:45,847 [DEBUG] connect_tcp.started host='127.0.0.1' port=7897 local_address=None timeout=3 socket_options=None
+2025-11-25 16:22:45,848 [DEBUG] connect_tcp.complete return_value=<httpcore._backends.sync.SyncStream object at 0x0000016FF546C650>
+2025-11-25 16:22:45,849 [DEBUG] send_request_headers.started request=<Request [b'HEAD']>
+2025-11-25 16:22:45,850 [DEBUG] send_request_headers.complete
+2025-11-25 16:22:45,850 [DEBUG] send_request_body.started request=<Request [b'HEAD']>
+2025-11-25 16:22:45,850 [DEBUG] send_request_body.complete
+2025-11-25 16:22:45,850 [DEBUG] receive_response_headers.started request=<Request [b'HEAD']>
+2025-11-25 16:22:46,430 [DEBUG] receive_response_headers.complete return_value=(b'HTTP/1.1', 502, b'Bad Gateway', [(b'Connection', b'close'), (b'Content-Length', b'0')])
+2025-11-25 16:22:46,430 [INFO] HTTP Request: HEAD http://localhost:7860/ "HTTP/1.1 502 Bad Gateway"
+2025-11-25 16:22:46,430 [DEBUG] receive_response_body.started request=<Request [b'HEAD']>
+2025-11-25 16:22:46,430 [DEBUG] receive_response_body.complete
+2025-11-25 16:22:46,430 [DEBUG] response_closed.started
+2025-11-25 16:22:46,430 [DEBUG] response_closed.complete
+2025-11-25 16:22:46,932 [DEBUG] connect_tcp.started host='127.0.0.1' port=7897 local_address=None timeout=3 socket_options=None
+2025-11-25 16:22:46,949 [DEBUG] connect_tcp.complete return_value=<httpcore._backends.sync.SyncStream object at 0x0000016FF546D160>
+2025-11-25 16:22:46,950 [DEBUG] send_request_headers.started request=<Request [b'HEAD']>
+2025-11-25 16:22:46,950 [DEBUG] send_request_headers.complete
+2025-11-25 16:22:46,950 [DEBUG] send_request_body.started request=<Request [b'HEAD']>
+2025-11-25 16:22:46,952 [DEBUG] send_request_body.complete
+2025-11-25 16:22:46,952 [DEBUG] receive_response_headers.started request=<Request [b'HEAD']>
+2025-11-25 16:22:47,550 [DEBUG] receive_response_headers.complete return_value=(b'HTTP/1.1', 502, b'Bad Gateway', [(b'Connection', b'close'), (b'Content-Length', b'0')])
+2025-11-25 16:22:47,551 [INFO] HTTP Request: HEAD http://localhost:7860/ "HTTP/1.1 502 Bad Gateway"
+2025-11-25 16:22:47,551 [DEBUG] receive_response_body.started request=<Request [b'HEAD']>
+2025-11-25 16:22:47,551 [DEBUG] receive_response_body.complete
+2025-11-25 16:22:47,551 [DEBUG] response_closed.started
+2025-11-25 16:22:47,552 [DEBUG] response_closed.complete
+2025-11-25 16:22:48,053 [DEBUG] connect_tcp.started host='127.0.0.1' port=7897 local_address=None timeout=3 socket_options=None
+2025-11-25 16:22:48,054 [DEBUG] connect_tcp.complete return_value=<httpcore._backends.sync.SyncStream object at 0x0000016FF544AF30>
+2025-11-25 16:22:48,054 [DEBUG] send_request_headers.started request=<Request [b'HEAD']>
+2025-11-25 16:22:48,054 [DEBUG] send_request_headers.complete
+2025-11-25 16:22:48,054 [DEBUG] send_request_body.started request=<Request [b'HEAD']>
+2025-11-25 16:22:48,055 [DEBUG] send_request_body.complete
+2025-11-25 16:22:48,055 [DEBUG] receive_response_headers.started request=<Request [b'HEAD']>
+2025-11-25 16:22:48,642 [DEBUG] receive_response_headers.complete return_value=(b'HTTP/1.1', 502, b'Bad Gateway', [(b'Connection', b'close'), (b'Content-Length', b'0')])
+2025-11-25 16:22:48,642 [INFO] HTTP Request: HEAD http://localhost:7860/ "HTTP/1.1 502 Bad Gateway"
+2025-11-25 16:22:48,642 [DEBUG] receive_response_body.started request=<Request [b'HEAD']>
+2025-11-25 16:22:48,642 [DEBUG] receive_response_body.complete
+2025-11-25 16:22:48,642 [DEBUG] response_closed.started
+2025-11-25 16:22:48,643 [DEBUG] response_closed.complete
+2025-11-25 16:22:49,145 [DEBUG] connect_tcp.started host='127.0.0.1' port=7897 local_address=None timeout=3 socket_options=None
+2025-11-25 16:22:49,146 [DEBUG] connect_tcp.complete return_value=<httpcore._backends.sync.SyncStream object at 0x0000016FF546D730>
+2025-11-25 16:22:49,146 [DEBUG] send_request_headers.started request=<Request [b'HEAD']>
+2025-11-25 16:22:49,146 [DEBUG] send_request_headers.complete
+2025-11-25 16:22:49,147 [DEBUG] send_request_body.started request=<Request [b'HEAD']>
+2025-11-25 16:22:49,148 [DEBUG] send_request_body.complete
+2025-11-25 16:22:49,148 [DEBUG] receive_response_headers.started request=<Request [b'HEAD']>
+2025-11-25 16:22:49,719 [DEBUG] receive_response_headers.complete return_value=(b'HTTP/1.1', 502, b'Bad Gateway', [(b'Connection', b'close'), (b'Content-Length', b'0')])
+2025-11-25 16:22:49,719 [INFO] HTTP Request: HEAD http://localhost:7860/ "HTTP/1.1 502 Bad Gateway"
+2025-11-25 16:22:49,719 [DEBUG] receive_response_body.started request=<Request [b'HEAD']>
+2025-11-25 16:22:49,719 [DEBUG] receive_response_body.complete
+2025-11-25 16:22:49,719 [DEBUG] response_closed.started
+2025-11-25 16:22:49,719 [DEBUG] response_closed.complete
+2025-11-25 16:26:28,376 [INFO] === GEO-Max UI 启动 ===
+2025-11-25 16:26:28,376 [INFO] Env check: GROQ_API_KEY set? YES
+2025-11-25 16:26:28,376 [INFO] Env check: GEMINI_API_KEY set? YES
+2025-11-25 16:26:28,378 [DEBUG] Using proactor: IocpProactor
+2025-11-25 16:26:28,515 [DEBUG] Using proactor: IocpProactor
+2025-11-25 16:26:29,553 [DEBUG] connect_tcp.started host='127.0.0.1' port=7897 local_address=None timeout=None socket_options=None
+2025-11-25 16:26:29,553 [DEBUG] connect_tcp.complete return_value=<httpcore._backends.sync.SyncStream object at 0x00000163559D7F80>
+2025-11-25 16:26:29,553 [DEBUG] send_request_headers.started request=<Request [b'GET']>
+2025-11-25 16:26:29,553 [DEBUG] send_request_headers.complete
+2025-11-25 16:26:29,554 [DEBUG] send_request_body.started request=<Request [b'GET']>
+2025-11-25 16:26:29,554 [DEBUG] send_request_body.complete
+2025-11-25 16:26:29,554 [DEBUG] receive_response_headers.started request=<Request [b'GET']>
+2025-11-25 16:26:29,558 [DEBUG] receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Connection', b'close'), (b'Content-Length', b'4'), (b'Content-Type', b'application/json'), (b'Date', b'Tue, 25 Nov 2025 08:26:28 GMT'), (b'Server', b'uvicorn')])
+2025-11-25 16:26:29,559 [INFO] HTTP Request: GET http://localhost:7860/startup-events "HTTP/1.1 200 OK"
+2025-11-25 16:26:29,559 [DEBUG] receive_response_body.started request=<Request [b'GET']>
+2025-11-25 16:26:29,559 [DEBUG] receive_response_body.complete
+2025-11-25 16:26:29,559 [DEBUG] response_closed.started
+2025-11-25 16:26:29,560 [DEBUG] response_closed.complete
+2025-11-25 16:26:29,594 [DEBUG] connect_tcp.started host='127.0.0.1' port=7897 local_address=None timeout=3 socket_options=None
+2025-11-25 16:26:29,595 [DEBUG] connect_tcp.complete return_value=<httpcore._backends.sync.SyncStream object at 0x0000016355A0BD40>
+2025-11-25 16:26:29,596 [DEBUG] send_request_headers.started request=<Request [b'HEAD']>
+2025-11-25 16:26:29,597 [DEBUG] send_request_headers.complete
+2025-11-25 16:26:29,597 [DEBUG] send_request_body.started request=<Request [b'HEAD']>
+2025-11-25 16:26:29,597 [DEBUG] send_request_body.complete
+2025-11-25 16:26:29,597 [DEBUG] receive_response_headers.started request=<Request [b'HEAD']>
+2025-11-25 16:26:29,608 [DEBUG] receive_response_headers.complete return_value=(b'HTTP/1.1', 500, b'Internal Server Error', [(b'Connection', b'close'), (b'Content-Length', b'21'), (b'Content-Type', b'text/plain; charset=utf-8'), (b'Date', b'Tue, 25 Nov 2025 08:26:28 GMT'), (b'Server', b'uvicorn')])
+2025-11-25 16:26:29,608 [INFO] HTTP Request: HEAD http://localhost:7860/ "HTTP/1.1 500 Internal Server Error"
+2025-11-25 16:26:29,609 [DEBUG] receive_response_body.started request=<Request [b'HEAD']>
+2025-11-25 16:26:29,609 [DEBUG] receive_response_body.complete
+2025-11-25 16:26:29,609 [DEBUG] response_closed.started
+2025-11-25 16:26:29,610 [DEBUG] response_closed.complete
+2025-11-25 16:26:30,112 [DEBUG] connect_tcp.started host='127.0.0.1' port=7897 local_address=None timeout=3 socket_options=None
+2025-11-25 16:26:30,123 [DEBUG] connect_tcp.complete return_value=<httpcore._backends.sync.SyncStream object at 0x0000016355A83A70>
+2025-11-25 16:26:30,124 [DEBUG] send_request_headers.started request=<Request [b'HEAD']>
+2025-11-25 16:26:30,125 [DEBUG] send_request_headers.complete
+2025-11-25 16:26:30,125 [DEBUG] send_request_body.started request=<Request [b'HEAD']>
+2025-11-25 16:26:30,125 [DEBUG] send_request_body.complete
+2025-11-25 16:26:30,126 [DEBUG] receive_response_headers.started request=<Request [b'HEAD']>
+2025-11-25 16:26:30,129 [DEBUG] receive_response_headers.complete return_value=(b'HTTP/1.1', 500, b'Internal Server Error', [(b'Connection', b'close'), (b'Content-Length', b'21'), (b'Content-Type', b'text/plain; charset=utf-8'), (b'Date', b'Tue, 25 Nov 2025 08:26:29 GMT'), (b'Server', b'uvicorn')])
+2025-11-25 16:26:30,129 [INFO] HTTP Request: HEAD http://localhost:7860/ "HTTP/1.1 500 Internal Server Error"
+2025-11-25 16:26:30,129 [DEBUG] receive_response_body.started request=<Request [b'HEAD']>
+2025-11-25 16:26:30,129 [DEBUG] receive_response_body.complete
+2025-11-25 16:26:30,129 [DEBUG] response_closed.started
+2025-11-25 16:26:30,129 [DEBUG] response_closed.complete
+2025-11-25 16:26:30,631 [DEBUG] connect_tcp.started host='127.0.0.1' port=7897 local_address=None timeout=3 socket_options=None
+2025-11-25 16:26:30,651 [DEBUG] connect_tcp.complete return_value=<httpcore._backends.sync.SyncStream object at 0x0000016355C690D0>
+2025-11-25 16:26:30,652 [DEBUG] send_request_headers.started request=<Request [b'HEAD']>
+2025-11-25 16:26:30,652 [DEBUG] send_request_headers.complete
+2025-11-25 16:26:30,652 [DEBUG] send_request_body.started request=<Request [b'HEAD']>
+2025-11-25 16:26:30,652 [DEBUG] send_request_body.complete
+2025-11-25 16:26:30,653 [DEBUG] receive_response_headers.started request=<Request [b'HEAD']>
+2025-11-25 16:26:30,656 [DEBUG] receive_response_headers.complete return_value=(b'HTTP/1.1', 500, b'Internal Server Error', [(b'Connection', b'close'), (b'Content-Length', b'21'), (b'Content-Type', b'text/plain; charset=utf-8'), (b'Date', b'Tue, 25 Nov 2025 08:26:29 GMT'), (b'Server', b'uvicorn')])
+2025-11-25 16:26:30,656 [INFO] HTTP Request: HEAD http://localhost:7860/ "HTTP/1.1 500 Internal Server Error"
+2025-11-25 16:26:30,657 [DEBUG] receive_response_body.started request=<Request [b'HEAD']>
+2025-11-25 16:26:30,657 [DEBUG] receive_response_body.complete
+2025-11-25 16:26:30,657 [DEBUG] response_closed.started
+2025-11-25 16:26:30,657 [DEBUG] response_closed.complete
+2025-11-25 16:26:31,159 [DEBUG] connect_tcp.started host='127.0.0.1' port=7897 local_address=None timeout=3 socket_options=None
+2025-11-25 16:26:31,159 [DEBUG] connect_tcp.complete return_value=<httpcore._backends.sync.SyncStream object at 0x0000016355C6AC00>
+2025-11-25 16:26:31,160 [DEBUG] send_request_headers.started request=<Request [b'HEAD']>
+2025-11-25 16:26:31,160 [DEBUG] send_request_headers.complete
+2025-11-25 16:26:31,161 [DEBUG] send_request_body.started request=<Request [b'HEAD']>
+2025-11-25 16:26:31,161 [DEBUG] send_request_body.complete
+2025-11-25 16:26:31,161 [DEBUG] receive_response_headers.started request=<Request [b'HEAD']>
+2025-11-25 16:26:31,164 [DEBUG] receive_response_headers.complete return_value=(b'HTTP/1.1', 500, b'Internal Server Error', [(b'Connection', b'close'), (b'Content-Length', b'21'), (b'Content-Type', b'text/plain; charset=utf-8'), (b'Date', b'Tue, 25 Nov 2025 08:26:30 GMT'), (b'Server', b'uvicorn')])
+2025-11-25 16:26:31,164 [INFO] HTTP Request: HEAD http://localhost:7860/ "HTTP/1.1 500 Internal Server Error"
+2025-11-25 16:26:31,164 [DEBUG] receive_response_body.started request=<Request [b'HEAD']>
+2025-11-25 16:26:31,164 [DEBUG] receive_response_body.complete
+2025-11-25 16:26:31,164 [DEBUG] response_closed.started
+2025-11-25 16:26:31,165 [DEBUG] response_closed.complete
+2025-11-25 16:26:31,667 [DEBUG] connect_tcp.started host='127.0.0.1' port=7897 local_address=None timeout=3 socket_options=None
+2025-11-25 16:26:31,667 [DEBUG] connect_tcp.complete return_value=<httpcore._backends.sync.SyncStream object at 0x0000016355A0BCE0>
+2025-11-25 16:26:31,667 [DEBUG] send_request_headers.started request=<Request [b'HEAD']>
+2025-11-25 16:26:31,668 [DEBUG] send_request_headers.complete
+2025-11-25 16:26:31,668 [DEBUG] send_request_body.started request=<Request [b'HEAD']>
+2025-11-25 16:26:31,668 [DEBUG] send_request_body.complete
+2025-11-25 16:26:31,668 [DEBUG] receive_response_headers.started request=<Request [b'HEAD']>
+2025-11-25 16:26:31,671 [DEBUG] receive_response_headers.complete return_value=(b'HTTP/1.1', 500, b'Internal Server Error', [(b'Connection', b'close'), (b'Content-Length', b'21'), (b'Content-Type', b'text/plain; charset=utf-8'), (b'Date', b'Tue, 25 Nov 2025 08:26:30 GMT'), (b'Server', b'uvicorn')])
+2025-11-25 16:26:31,671 [INFO] HTTP Request: HEAD http://localhost:7860/ "HTTP/1.1 500 Internal Server Error"
+2025-11-25 16:26:31,671 [DEBUG] receive_response_body.started request=<Request [b'HEAD']>
+2025-11-25 16:26:31,671 [DEBUG] receive_response_body.complete
+2025-11-25 16:26:31,671 [DEBUG] response_closed.started
+2025-11-25 16:26:31,672 [DEBUG] response_closed.complete

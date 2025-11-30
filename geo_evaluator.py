@@ -11,29 +11,37 @@ from openai import OpenAI
 
 from geo_metrics import compression_ratio, type_token_ratio, reading_ease
 
-# ========= 你需要把这里接到你已有的 DashScope/DeepSeek 调用 =========
-def llm_complete(model_name: str, prompt: str, temperature: float = 0.0, max_tokens: int = 32) -> str:
-    """
-    评分专用调用：走 DashScope OpenAI-Compatible。
-    环境变量：DASHSCOPE_API_KEY 必填
-    model_name 建议用 "qwen3-max" 或 "deepseek-v3.2-exp"
-    """
-    api_key = os.getenv("DASHSCOPE_API_KEY", "") or os.getenv("TONGYI_API_KEY", "")
-    if not api_key:
-        raise RuntimeError("缺少 DASHSCOPE_API_KEY（或 TONGYI_API_KEY）。")
+from providers_groq_gemini import ModelHub
+hub = ModelHub()
 
-    client = OpenAI(api_key=api_key, base_url="https://dashscope.aliyuncs.com/compatible-mode/v1")
-    # 评分任务需要严格可解析的短输出
-    completion = client.chat.completions.create(
-        model=model_name,
-        messages=[
-            {"role": "system", "content": "You are a strict grader. Output ONE number only."},
-            {"role": "user", "content": prompt}
-        ],
+# ========= 统一 LLM 调用（支持手动 + auto fallback） =========
+from pipeline.inference_engine import call_model
+
+# ========= 你需要把这里接到你已有的 DashScope/DeepSeek 调用 =========
+def llm_complete(
+    model_name: str,
+    prompt: str,
+    temperature: float = 0.0,
+    max_tokens: int = 32,
+    provider: str = "groq",
+) -> str:
+    """
+    评分专用调用（严格短输出）：
+    - provider 可选 groq / gemini / grok / deepseek / qwen
+    - model_name 作为具体模型名透传
+    """
+    # 评分提示：只要数字
+    sys_hint = "You are a strict grader. Output ONE number only."
+    full_prompt = f"{sys_hint}\n\n{prompt}"
+
+    # 统一走 call_model
+    return (call_model(
+        full_prompt,
+        provider=provider,
         temperature=temperature,
-        max_tokens=max_tokens,
-    )
-    return (completion.choices[0].message.content or "").strip()
+        model=model_name,
+    ) or "").strip()
+
 
 class GeoScore(TypedDict):
     relevance: float
@@ -97,12 +105,15 @@ FORCE_NUMERIC_SUFFIX = """
 例如：4.5
 """
 
-def evaluate_dimension(model_name: str,
-                       prompt_template: str,
-                       query: str,
-                       answer: str,
-                       mode: Literal["single_text", "with_citations"] = "single_text",
-                       retries: int = 2) -> float:
+def evaluate_dimension(
+    model_name: str,
+    prompt_template: str,
+    query: str,
+    answer: str,
+    provider: str = "groq",
+    mode: Literal["single_text", "with_citations"] = "single_text",
+    retries: int = 2
+) -> float:
     """
     评分严格模式：在模板后追加“只输出数字”提示；解析失败自动重试，最终回退3.0。
     """
@@ -111,7 +122,7 @@ def evaluate_dimension(model_name: str,
     last_err = None
     for _ in range(max(1, retries)):
         try:
-            text = llm_complete(model_name, prompt, temperature=0.0, max_tokens=12)
+            text = llm_complete(model_name, prompt, provider=provider, temperature=0.0, max_tokens=12)
             val = _extract_score(text or "")
             if val is not None:
                 return _clip_1_5(val)
@@ -120,14 +131,27 @@ def evaluate_dimension(model_name: str,
             time.sleep(0.2)
     return 3.0
 
-def _sample_scores(model_name: str, tpl: str, query: str, answer: str, n: int) -> (float, float):
-    vals = [evaluate_dimension(model_name, tpl, query, answer) for _ in range(max(1, n))]
+def _sample_scores(
+    model_name: str,
+    tpl: str,
+    query: str,
+    answer: str,
+    n: int,
+    provider: str = "auto"
+) -> (float, float):
+    vals = [
+        evaluate_dimension(model_name, tpl, query, answer, provider=provider)
+        for _ in range(max(1, n))
+    ]
     return float(mean(vals)), float(pstdev(vals)) if len(vals) > 1 else 0.0
 
-def evaluate_subjective_scores(model_name: str,
-                               query: str,
-                               answer: str,
-                               samples: int = 1) -> (Dict[str, float], Dict[str, float]):
+def evaluate_subjective_scores(
+    model_name: str,
+    query: str,
+    answer: str,
+    provider: str = "groq",
+    samples: int = 1
+) -> (Dict[str, float], Dict[str, float]):
     """
     返回：七维平均分、以及对应的标准差（用于诊断稳定性）
     """
@@ -135,7 +159,7 @@ def evaluate_subjective_scores(model_name: str,
     means, stdevs = {}, {}
 
     def _do(key_tpl, out_key):
-        m, s = _sample_scores(model_name, tpls[key_tpl], query, answer, samples)
+        m, s = _sample_scores(model_name, tpls[key_tpl], query, answer, samples, provider=provider)
         means[out_key], stdevs[out_key] = m, s
 
     _do("relevance", "relevance")
@@ -147,6 +171,7 @@ def evaluate_subjective_scores(model_name: str,
     _do("follow", "follow_up")
 
     return means, stdevs
+
 
 def _subjective_to_0_100(subj: Dict[str, float]) -> float:
     # 线性映射 (1~5) → (0~100)
@@ -174,17 +199,22 @@ def compute_geo_score(subj: Dict[str, float], obj: Dict[str, float]) -> float:
 
     return float(max(0.0, min(100.0, subjective + bonus)))
 
-def evaluate_geo_score(model_name: str,
-                       query: str,
-                       src_text: str,
-                       opt_text: str,
-                       mode: Literal["single_text","with_citations"] = "single_text",
-                       samples: int = 1) -> GeoScore:
+def evaluate_geo_score(
+    model_name: str,
+    query: str,
+    src_text: str,
+    opt_text: str,
+    provider: str = "auto",
+    mode: Literal["single_text","with_citations"] = "single_text",
+    samples: int = 1
+) -> GeoScore:
     """
     对优化稿（opt_text）进行主观七维评审 + 客观指标计算，返回统一结构。
     """
     t0 = time.time()
-    subj_means, subj_std = evaluate_subjective_scores(model_name, query, opt_text, samples=samples)
+    subj_means, subj_std = evaluate_subjective_scores(
+        model_name, query, opt_text, provider=provider, samples=samples
+    )
     obj = {
         "compression_ratio": compression_ratio(src_text, opt_text),
         "ttr": type_token_ratio(opt_text),
@@ -204,7 +234,7 @@ def evaluate_geo_score(model_name: str,
         objective=obj,
         geo_score=total,
         mode=mode,
-        model_used=model_name,
+        model_used=f"{provider}:{model_name}",
         latency_ms=dt,
         samples=samples,
         stddev=subj_std

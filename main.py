@@ -1,7 +1,6 @@
-# main.py — Final aligned version for GEO-Max Engine
+# main.py — Final aligned version for GEO-Max Engine (C: manual first + auto fallback)
 import traceback
-import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Literal
 
 import uvicorn
 from fastapi import FastAPI
@@ -26,7 +25,13 @@ class ScoreRequest(BaseModel):
     text: Optional[str] = None
 
     # aligned fields
-    model_name: Optional[str] = Field(None, description="Model name, e.g. qwen-max / gpt-4o / deepseek")
+    model_name: Optional[str] = Field(
+        None, description="Model name, e.g. llama-3.3-70b-versatile / gemini-1.5-flash-latest / qwen3-max / deepseek-chat"
+    )
+    provider: Optional[Literal["auto", "groq", "gemini", "grok", "qwen", "deepseek"]] = Field(
+        "auto", description="LLM provider. manual first, auto fallback supported."
+    )
+
     query: Optional[str] = None
     src_text: Optional[str] = None
     opt_text: Optional[str] = None
@@ -38,6 +43,8 @@ class ScoreRequest(BaseModel):
 
 class ReportRequest(BaseModel):
     model_name: Optional[str] = None
+    provider: Optional[Literal["auto", "groq", "gemini", "grok", "qwen", "deepseek"]] = "auto"
+
     query: Optional[str] = None
     src_text: Optional[str] = None
     opt_text: Optional[str] = None
@@ -64,23 +71,37 @@ def safe_call(fn, *args, **kwargs):
 
 def normalize_to_evaluator(req: ScoreRequest):
     """
-    把外部请求规范化为 evaluate_geo_score 真实参数顺序：
-    model_name, query, src_text, opt_text, mode, samples
+    把外部请求规范化为 evaluate_geo_score 真实参数：
+    model_name, query, src_text, opt_text, provider, mode, samples
     """
 
-    # 1) 模型默认值
-    model_name = req.model_name or "qwen-max"   # 你可以改 gpt-4o / deepseek-coder 等
+    # 1) provider 默认 auto
+    provider = req.provider or "auto"
 
-    # 2) 文本统一格式
-    src_text = req.src_text or req.text or ""     # text fallback → src_text
-    opt_text = req.opt_text or src_text           # 默认：opt_text = src_text（baseline）
-    query = req.query or ""                       # query 允许为空字符串
+    # 2) 模型默认值（注意：provider=auto 时 model_name 只是首选模型）
+    if req.model_name:
+        model_name = req.model_name
+    else:
+        # 按 provider 给默认模型
+        if provider == "groq":
+            model_name = "llama-3.3-70b-versatile"
+        elif provider == "gemini":
+            model_name = "gemini-1.5-flash-latest"
+        elif provider == "deepseek":
+            model_name = "deepseek-chat"
+        else:
+            model_name = "qwen3-max"   # 兼容国内旧链路
 
-    # 3) 模式 & 采样
+    # 3) 文本统一格式
+    src_text = req.src_text or req.text or ""
+    opt_text = req.opt_text or src_text
+    query = req.query or ""
+
+    # 4) mode & samples
     mode = req.mode or "single_text"
     samples = req.samples or 1
 
-    return model_name, query, src_text, opt_text, mode, samples
+    return model_name, query, src_text, opt_text, provider, mode, samples
 
 
 # -----------------------------------
@@ -88,25 +109,23 @@ def normalize_to_evaluator(req: ScoreRequest):
 # -----------------------------------
 @app.post("/score")
 def score(req: ScoreRequest):
-    model_name, query, src_text, opt_text, mode, samples = normalize_to_evaluator(req)
+    model_name, query, src_text, opt_text, provider, mode, samples = normalize_to_evaluator(req)
 
     ok, data = safe_call(
         evaluate_geo_score,
-        model_name,
-        query,
-        src_text,
-        opt_text,
-        mode,
-        samples
+        model_name=model_name,
+        query=query,
+        src_text=src_text,
+        opt_text=opt_text,
+        provider=provider,
+        mode=mode,
+        samples=samples
     )
 
     if not ok:
         return {"ok": False, "where": "score", **data}
 
-    return {
-        "ok": True,
-        "score": data
-    }
+    return {"ok": True, "score": data}
 
 
 # -----------------------------------
@@ -114,11 +133,24 @@ def score(req: ScoreRequest):
 # -----------------------------------
 @app.post("/report")
 def report(req: ReportRequest):
-    # 对齐输入
     src_text = req.src_text or req.text or ""
     opt_text = req.opt_text or src_text
     query = req.query or ""
-    model = req.model_name or "qwen-max"
+    provider = req.provider or "auto"
+
+    # 默认模型按 provider 选
+    if req.model_name:
+        model = req.model_name
+    else:
+        if provider == "groq":
+            model = "llama-3.3-70b-versatile"
+        elif provider == "gemini":
+            model = "gemini-1.5-flash-latest"
+        elif provider == "deepseek":
+            model = "deepseek-chat"
+        else:
+            model = "qwen3-max"
+
     mode = req.mode or "single_text"
     samples = req.samples or 1
 
@@ -128,12 +160,13 @@ def report(req: ReportRequest):
     else:
         ok_s, sdata = safe_call(
             evaluate_geo_score,
-            model,
-            query,
-            src_text,
-            opt_text,
-            mode,
-            samples
+            model_name=model,
+            query=query,
+            src_text=src_text,
+            opt_text=opt_text,
+            provider=provider,
+            mode=mode,
+            samples=samples
         )
         if not ok_s:
             return {"ok": False, "where": "score_for_report", **sdata}
@@ -148,11 +181,7 @@ def report(req: ReportRequest):
     if not ok_r:
         return {"ok": False, "where": "render_report_html", **rdata}
 
-    return {
-        "ok": True,
-        "score": score_json,
-        "html": rdata
-    }
+    return {"ok": True, "score": score_json, "html": rdata}
 
 
 # -----------------------------------
