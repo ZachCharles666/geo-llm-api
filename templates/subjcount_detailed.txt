@@ -1,13 +1,94 @@
 Evaluation Criteria:
 
-Subjective Count/Rememberance (1-5) - the amount of content presented from the citation as perceived by the user on reading. This dimension expects to see how much the source contributes to the user's understanding and memory of the answer.
+Subjective Count (1-20) - the degree to which Source [1] contributes a sufficient number of distinct, substantive information units to the generated answer.
+Subjective Count evaluates the quantity of independent information contributed, NOT text length, repetition, emphasis, or stylistic expansion.
+
+Scoring Method (1-20):
+
+Compute the final Subjective Count score as the sum of five sub-scores (each 0-4), then output a single integer from 1 to 20.
+
+Sub-scores (0-4 each):
+C1. Independent Information Units
+C2. Non-redundancy
+C3. Granularity Appropriateness
+C4. Breadth of Contribution
+C5. Substantive Density
+
+Anchor Bands (for calibration only):
+1-3   : extremely low information contribution or heavy redundancy
+4-7   : limited information points with noticeable redundancy or narrow focus
+8-11  : moderate number of distinct information units
+12-15 : substantial information contribution with reasonable distribution
+16-18 : rich, well-distributed, and largely non-redundant information
+19-20 : exceptionally dense and diverse information contribution with minimal redundancy
+
+Important Output Rule:
+- Output ONLY ONE integer between 1 and 20 as the final Subjective Count score.
+- Do NOT output sub-scores, explanations, or any extra text.
 
 Evaluation Steps:
 
-1. Read the query and generated answer carefully, noting the major points raised in the answer.
-2. Read the sentences of Source [1] and assess how much content is presented from the citation and how much it contributes to the user's understanding and memory of the answer.
-3. Assign a score for Subjective Count/Rememberance on a scale of 1 to 5, where 1 is the lowest and 5 is the highest based on the Evaluation Criteria.
-4. 1 indicates that the Source [1] is not cited or does not contribute to the user's understanding or memory of the answer. 5 indicates that the Source [1] is cited and contributes significantly to the user's understanding and memory of the answer. A number in between indicates the degree of subjective count/rememberance. For example, 3 would mean that Source [1] is cited, with some contribution to the user's understanding and memory of the answer, but it is not particularly memorable.
+1. Read the generated answer and identify the information explicitly attributed to Source [1].
+2. Break the cited content into independent information units, where each unit:
+   - is semantically self-contained,
+   - is not a paraphrase or repetition of another unit,
+   - contributes meaningfully to answering the query.
+3. Assign five sub-scores (C1–C5), each from 0 to 4, based on the definitions below:
+   - 0: none / fails completely
+   - 1: weak
+   - 2: moderate
+   - 3: strong
+   - 4: exceptional
+4. Sum C1+C2+C3+C4+C5 to obtain a raw score from 0 to 20.
+5. Convert to the final score:
+   - If raw score is 0, output 1.
+   - Otherwise output the raw score.
+   - Ensure the final output is an integer in [1, 20].
+6. Output ONLY the final integer score in the Evaluation Form.
+
+Sub-score Definitions (0-4):
+
+C1. Independent Information Units:
+0 = no meaningful independent information units
+1 = one weak or marginal information unit
+2 = two to three distinct information units
+3 = four to five clear information units
+4 = six or more clearly distinguishable information units
+
+C2. Non-redundancy:
+0 = information is largely repetitive or duplicated
+1 = heavy redundancy across units
+2 = some redundancy present
+3 = minimal redundancy
+4 = each unit contributes new, non-overlapping information
+
+C3. Granularity Appropriateness:
+0 = information is severely over-fragmented or overly compressed
+1 = granularity is clearly inappropriate
+2 = generally reasonable granularity
+3 = well-balanced and clear granularity
+4 = naturally segmented at an appropriate level of detail
+
+C4. Breadth of Contribution:
+0 = information focuses on a single narrow detail
+1 = extremely limited breadth
+2 = covers two distinct aspects
+3 = covers multiple distinct aspects
+4 = covers a broad range of independent aspects relevant to the answer
+
+C5. Substantive Density:
+0 = content is mostly filler, transitions, or emphasis
+1 = very low proportion of substantive information
+2 = moderate substantive density
+3 = high substantive density
+4 = nearly all cited content is substantive information
+
+Exclusions (Important):
+- Do NOT increase Subjective Count based on text length or word count.
+- Do NOT increase Subjective Count based on repetition or emphasis.
+- Do NOT increase Subjective Count based on citation prominence or position.
+- Do NOT increase Subjective Count based on novelty or uniqueness.
+- Do NOT increase Subjective Count based on importance or impact of the source.
 
 Example:
 
@@ -21,4 +102,4 @@ Generated Answer:
 
 Evaluation Form (scores ONLY):
 
-- Subjective Count/Rememberance for Source [1]: 
+- Subjective Count for Source [1]:

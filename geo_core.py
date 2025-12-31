@@ -28,7 +28,7 @@ def _build_lang_instruction(out_lang: str) -> str:
     if out_lang == "English":
         return "Please answer in English."
     # Auto 或其他情况
-    return "输出语言请与输入文本的主要语言保持一致。"
+    return "输出语言请与输入文本的主要语言保持一致；若输入为中文，请使用简体中文输出。"
 
 
 def split_into_chunks(text: str, max_chars: int) -> list[str]:
@@ -94,10 +94,12 @@ def geo_rewrite(
     max_chars: int = 2400,
     out_lang: str = "Auto",
     temperature: float = 0.2,
+    rewrite_goal: str = "balanced",  # ✅ NEW: auto / fast / balanced / credibility / seo_push
 ) -> Tuple[str, str]:
     """
     功能 1：内容改写，生成 GEO-Max 优化稿（多语言 + geo_prompts.json 版本）
-
+    - 支持 2-pass / 3-pass（由 rewrite_goal 决定）
+    - 支持长度下限约束（避免输出过短）
     返回: (optimized_text, original_text)
     """
     from pathlib import Path
@@ -108,26 +110,28 @@ def geo_rewrite(
     if not text:
         return "⚠️ 请输入原文。", ""
 
-    # 1. 解析模型 provider & 具体模型（✅ 统一使用 providers_groq_gemini 的映射）
+    # 1. 解析模型 provider & 具体模型
     provider = norm_provider(model_ui)
-    # 若找不到 provider 对应模型，就取 DEFAULT_MODELS 的第一个值兜底
     model = DEFAULT_MODELS.get(provider) or next(iter(DEFAULT_MODELS.values()))
 
     # 2. 构造语言指令（给大模型看的）
+    if (out_lang or "Auto") == "Auto":
+        if any("\u4e00" <= ch <= "\u9fff" for ch in text):
+            out_lang = "Chinese"
     lang_instruction = _build_lang_instruction(out_lang)
 
-    # 3. 根据 out_lang 选择 Prompt key
+    # 3. 语言 key（沿用你现有映射，已覆盖 de/es/fr/ja/ko）
     lang_key_map = {
-        "Auto": "geo_max_auto",
-        "Chinese": "geo_max_zh",
-        "English": "geo_max_en",
-        "Spanish": "geo_max_es",
-        "French": "geo_max_fr",
-        "Japanese": "geo_max_ja",
-        "Korean": "geo_max_ko",
-        "German": "geo_max_de",
+        "Auto": "auto",
+        "Chinese": "zh",
+        "English": "en",
+        "Spanish": "es",
+        "French": "fr",
+        "Japanese": "ja",
+        "Korean": "ko",
+        "German": "de",
     }
-    prompt_key = lang_key_map.get(out_lang, "geo_max_auto")
+    lang_suffix = lang_key_map.get(out_lang, "auto")
 
     # 4. 读取 geo_prompts.json
     prompt_file = Path(__file__).with_name("geo_prompts.json")
@@ -136,62 +140,123 @@ def geo_rewrite(
         try:
             prompts = json.loads(prompt_file.read_text(encoding="utf-8"))
         except Exception as e:
-            # 这里不用 logger，避免依赖；简单 print 即可
             print(f"[geo_rewrite] 读取 geo_prompts.json 失败，将使用内置中文兜底 Prompt：{e}")
             prompts = {}
     else:
         print("[geo_rewrite] geo_prompts.json 未找到，将使用内置中文兜底 Prompt。")
 
-    # 5. 内置兜底 Prompt（防止文件丢失时直接崩）
+    # 5. 内置兜底 Prompt（保持你原有逻辑）
     fallback_prompt = (
         "你是一名生成式引擎优化（GEO）专家，负责将下面的文本改写为更适合被大模型引用和总结的版本。"
         "在不改变原始观点方向的前提下，提升逻辑清晰度、信息密度与可引用性。"
         "请仅输出改写后的正文，不要添加任何额外说明。\n\n原文：{TEXT}"
     )
 
-    # 优先级：指定语言 → auto → zh → fallback
-    tpl = (
-        prompts.get(prompt_key)
-        or prompts.get("geo_max_auto")
-        or prompts.get("geo_max_zh")
-        or fallback_prompt
-    )
+    # 6. 选择 2-pass / 3-pass（✅ 第一阶段：让用户选择目标，从而决定 pass 数）
+    # 你后续可以在 UI 用更友好的文案映射到这些 goal
+    goal = (rewrite_goal or "auto").strip().lower()
+    alias = {"seo_boost": "seo_push", "authority_boost": "credibility"}
+    goal = alias.get(goal, goal)
+    
+    if goal in {"fast", "auto"}:
+        pass_plan = [1, 2]  # ✅ 2-pass：先结构化与去噪，再做可引用强化
+    elif goal in {"balanced"}:
+        pass_plan = [1, 2, 3]  # 
+    else:
+        # credibility / seo_push / deep 等更“重加工”目标，用 3-pass
+        pass_plan = [1, 2, 3]
 
-    # 6. 分块逻辑（复用 split_into_chunks）
+    print(f"[geo_rewrite] rewrite_goal={rewrite_goal}, pass_plan={pass_plan}")
+
+    # 7. 分块逻辑（沿用你的 split_into_chunks）
     if use_chunk:
         chunks = split_into_chunks(text, max_chars)
     else:
         chunks = [text]
 
+    def _get_tpl(pass_id: int) -> str:
+        """
+        兼容两种 geo_prompts.json 结构：
+        A) 扁平：geo_max_p1_zh / geo_max_p2_en ...
+        B) 嵌套：geo_rewrite.pass1_core.zh / pass2_geo.en / pass3_query.auto ...
+        """
+        # 1) 先尝试扁平 key（兼容旧版或你未来可能做的扁平化）
+        flat_key = f"geo_max_p{pass_id}_{lang_suffix}"
+        flat_old = f"geo_max_{lang_suffix}"
+        if isinstance(prompts, dict):
+            tpl = prompts.get(flat_key) or prompts.get(flat_old)
+            if tpl:
+                return tpl
+
+        # 2) 再尝试你现在的嵌套结构（geo_rewrite -> passX -> lang）
+        grp = None
+        if pass_id == 1:
+            grp = "pass1_core"
+        elif pass_id == 2:
+            grp = "pass2_geo"
+        elif pass_id == 3:
+            grp = "pass3_query"
+
+        try:
+            nested = prompts.get("geo_rewrite", {})
+            if isinstance(nested, dict) and grp in nested:
+                block = nested.get(grp, {})
+                if isinstance(block, dict):
+                    tpl2 = block.get(lang_suffix) or block.get("auto")
+                    if tpl2:
+                        return tpl2
+        except Exception:
+            pass
+
+        # 3) 最后兜底
+        return (
+            (prompts.get("geo_rewrite", {}).get("pass1_core", {}).get("zh") if isinstance(prompts, dict) else None)
+            or (prompts.get("geo_max_auto") if isinstance(prompts, dict) else None)
+            or (prompts.get("geo_max_zh") if isinstance(prompts, dict) else None)
+            or fallback_prompt
+        )
+
+
+
+    def _len_ratio(src: str, out: str) -> float:
+        # ✅ 近似 token：用字符长度兜底（你前后端已有粗略 token 计算时，可替换这里）
+        s = len((src or "").strip())
+        o = len((out or "").strip())
+        if s <= 0:
+            return 1.0
+        return o / float(s)
+
     outs = []
 
-    # 7. 逐块改写
+    # 8. 逐块改写（每块按 pass 计划串行）
     for ck in chunks:
         ck = (ck or "").strip()
         if not ck:
             continue
 
-        # 7.1 先套模板
-        try:
-            prompt = tpl.format(TEXT=ck)
-        except Exception as e:
-            # 如果模板 format 失败，退回到 fallback
-            print(f"[geo_rewrite] 模板 format 失败，使用 fallback。错误：{e}")
-            prompt = fallback_prompt.format(TEXT=ck)
+        cur_text = ck
+        for pass_id in pass_plan:
+            tpl = _get_tpl(pass_id)
 
-        # 7.2 附加语言指令（让模型更明确输出语言）
-        lang_instruction_clean = (lang_instruction or "").strip()
-        if lang_instruction_clean:
-            prompt = lang_instruction_clean + "\n\n" + prompt
+            try:
+                prompt = tpl.format(TEXT=cur_text)
+            except Exception as e:
+                print(f"[geo_rewrite] 模板 format 失败，使用 fallback。错误：{e}")
+                prompt = fallback_prompt.format(TEXT=cur_text)
 
-        # 7.3 调用底层大模型
-        out = call_model(
-            prompt,
-            provider=provider,
-            model=model,
-            temperature=temperature,
-        )
-        outs.append((out or "").strip())
+            # 附加语言指令
+            lang_instruction_clean = (lang_instruction or "").strip()
+            if lang_instruction_clean:
+                prompt = lang_instruction_clean + "\n\n" + prompt
+
+            cur_text = (call_model(
+                prompt,
+                provider=provider,
+                model=model,
+                temperature=temperature,
+            ) or "").strip()
+
+        outs.append(cur_text)
 
     final = "\n\n".join(outs).strip()
     return final, text

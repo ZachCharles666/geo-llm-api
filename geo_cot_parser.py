@@ -14,9 +14,15 @@ Stage1 Markdown -> 结构化 Logic JSON 解析器（带 UUID & 兜底逻辑）
   - run_id: 本次调用 run 的 ID（依赖 geo_ids.make_run_id）
 """
 import re
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
+from datetime import datetime
+import uuid
 
-from geo_ids import make_run_id, make_node_uuid
+try:
+    from geo_ids import make_run_id, make_node_uuid
+except ImportError:
+    # 如果你之前已经在本文件顶部 import 过，可以删掉这个兜底
+    from .geo_ids import make_run_id, make_node_uuid
 
 
 # 兼容类似：
@@ -328,3 +334,391 @@ def stage1_md_to_json(
         }
 
     return result
+
+def stage2_text_to_blueprint(
+    stage2_md: str,
+    user_question: str = "",
+    brand_brief: str = "",
+    must_expose: str = "",
+    expo_hint: str = "",
+    run_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    将 Stage2 Markdown（内容矩阵）解析为 Blueprint JSON。
+
+    解析目标：
+    - I. 内容链总览  -> chains[]
+    - II. 标题矩阵展开 -> titles[]
+    - III. 标题级内容概述 -> abstracts[]
+    - IV. 执行清单建议 -> routes{ execution_order, recommended_channels }
+
+    说明：
+    - 尽量避免改动原有 Blueprint 顶层结构；
+    - 内部使用相对宽松的正则，能 parse 就 parse，parse 不了就留空。
+    """
+    md = stage2_md or ""
+    if not run_id:
+        run_id = make_run_id()
+
+    blueprint_id = make_node_uuid("BP", run_id, "STAGE2-BLUEPRINT")
+
+    # ---------- 0) 工具函数：按 "### I./II./III./IV." 切分大段 ----------
+
+    def _get_section(md_text: str, label: str) -> str:
+        """
+        label: "I" / "II" / "III" / "IV"
+        返回对应大段（含标题行），找不到则返回空串。
+        """
+        # 当前段落起点
+        m_start = re.search(rf"^###\s+{label}\.\s.*$", md_text, flags=re.MULTILINE)
+        if not m_start:
+            return ""
+
+        start = m_start.start()
+
+        # 下一段落起点
+        m_next = re.search(
+            r"^###\s+(I|II|III|IV)\.\s.*$",
+            md_text[m_start.end() :],
+            flags=re.MULTILINE,
+        )
+        if m_next:
+            end = m_start.end() + m_next.start()
+        else:
+            end = len(md_text)
+
+        return md_text[start:end].strip()
+
+    sec_I = _get_section(md, "I")  # 内容链总览
+    sec_II = _get_section(md, "II")  # 标题矩阵展开
+    sec_III = _get_section(md, "III")  # 标题级内容概述
+    sec_IV = _get_section(md, "IV")  # 执行清单建议
+
+    # ---------- 1) 解析 I. 内容链总览 -> chains[] ----------
+
+    chains: List[Dict[str, Any]] = []
+        
+    if sec_I:
+            # 思路：先按「Source_Node block」切片，再在每个 block 里分别匹配字段
+        # 这样对缩进 / 空行的容忍度更高
+        block_pattern = re.compile(
+            r"(?:^\s*\d+\.\s*)?\*\*Source_Node\*\*.*?"
+            r"(?=^\s*\d+\.\s*\*\*Source_Node\*\*|^####\s+MLC-|^###\s+II\.|\Z)",
+            flags=re.MULTILINE | re.DOTALL,
+        )
+
+        for m_block in block_pattern.finditer(sec_I):
+            chunk = m_block.group(0)
+
+            # 分别匹配字段，缺少关键字段就跳过该 block
+            m_source = re.search(
+                r"\*\*Source_Node\*\*\s*:\s*(MLC-\d+)", chunk
+            )
+            m_cc = re.search(
+                r"\*\*CC_ID\*\*\s*:\s*([A-Za-z0-9\-_]+)", chunk
+            )
+            m_target = re.search(
+                r"\*\*目标受众\*\*\s*:\s*(.+)", chunk
+            )
+            m_belief = re.search(
+                r"\*\*要改变的认知\*\*\s*:\s*(.+)", chunk
+            )
+            m_trigger = re.search(
+                r"\*\*触发条件[（\(].*?[）\)]\*\*\s*:\s*(.+)", chunk
+            )
+            m_ev = re.search(
+                r"\*\*可验证的论据方向\*\*\s*:\s*((?:\s*[-•]\s*.+\n?)*)",
+                chunk,
+            )
+
+            # 至少要有 Source_Node / CC_ID / 目标受众 / 要改变的认知
+            if not (m_source and m_cc and m_target and m_belief):
+                continue
+
+            source = m_source.group(1).strip()
+            cc_id = m_cc.group(1).strip()
+            target = m_target.group(1).strip()
+            belief = m_belief.group(1).strip()
+            trigger = m_trigger.group(1).strip() if m_trigger else ""
+
+            evidence_list: List[str] = []
+            if m_ev:
+                evidence_raw = m_ev.group(1) or ""
+                for ln in evidence_raw.splitlines():
+                    ln = ln.strip()
+                    if not ln:
+                        continue
+                    ln = re.sub(r"^[-•]\s*", "", ln)
+                    if ln:
+                        evidence_list.append(ln)
+
+            chains.append(
+                {
+                    "cc_id": cc_id,
+                    "source_node": source,
+                    "target_audience": target,
+                    "belief_to_change": belief,
+                    "trigger": trigger,
+                    "evidence_directions": evidence_list,
+                }
+            )
+
+
+    # ---------- 2) 解析 II. 标题矩阵展开 -> titles[] ----------
+
+    titles: List[Dict[str, Any]] = []
+
+    if sec_II:
+        # 按 "#### MLC-01-CC1" 这样的子标题拆块
+        block_pattern = re.compile(
+            r"^####\s+(?P<cc_id>MLC-\d+-CC\d+).*?$"
+            r"(?P<body>.*?)(?=^####\s+MLC-\d+-CC\d+|\Z)",
+            flags=re.MULTILINE | re.DOTALL,
+        )
+
+        for m in block_pattern.finditer(sec_II):
+            cc_id = m.group("cc_id").strip()
+            body = m.group("body") or ""
+
+            def _find_title(tag: str) -> Optional[str]:
+                # 匹配 "- **H1**: xxx"
+                mm = re.search(
+                    rf"-\s*\*\*{tag}\*\*\s*[:：]\s*(.+)",
+                    body,
+                    flags=re.MULTILINE,
+                )
+                return mm.group(1).strip() if mm else None
+
+            titles.append(
+                {
+                    "cc_id": cc_id,
+                    "H1": _find_title("H1"),
+                    "H2": _find_title("H2"),
+                    "H3": _find_title("H3"),
+                }
+            )
+
+    # ---------- 3) 解析 III. 标题级内容概述 -> abstracts[] ----------
+
+    abstracts: List[Dict[str, Any]] = []
+
+    if sec_III:
+        block_pattern = re.compile(
+            r"^####\s+(?P<cc_id>MLC-\d+-CC\d+).*?$"
+            r"(?P<body>.*?)(?=^####\s+MLC-\d+-CC\d+|\Z)",
+            flags=re.MULTILINE | re.DOTALL,
+        )
+
+        for m in block_pattern.finditer(sec_III):
+            cc_id = m.group("cc_id").strip()
+            body = m.group("body") or ""
+
+            # 每个 ##cc_id 段中会有多组「标题/论点/论据方向/品牌露出逻辑」
+            # 我们以 "- **标题**:" 为分块起点
+            sub_pattern = re.compile(
+                r"-\s*\*\*标题\*\*\s*[:：]\s*(?P<title>.+?)\n"
+                r"\s*-\s*\*\*论点\*\*\s*[:：]\s*(?P<point>.+?)\n"
+                r"\s*-\s*\*\*论据方向\*\*\s*[:：]\s*(?P<evidence>(?:\s*[-•]\s*.+\n?)*)"
+                r"\s*-\s*\*\*品牌露出逻辑\*\*\s*[:：]\s*(?P<brand>.+?)(?=\n\s*-\s*\*\*标题\*\*|\Z)",
+                flags=re.DOTALL,
+            )
+
+            for mm in sub_pattern.finditer(body):
+                evidence_raw = mm.group("evidence") or ""
+                evidence_list: List[str] = []
+                for ln in evidence_raw.splitlines():
+                    ln = ln.strip()
+                    if not ln:
+                        continue
+                    ln = re.sub(r"^[-•]\s*", "", ln)
+                    if ln:
+                        evidence_list.append(ln)
+
+                abstracts.append(
+                    {
+                        "cc_id": cc_id,
+                        "title": mm.group("title").strip(),
+                        "point": mm.group("point").strip(),
+                        "evidence_directions": evidence_list,
+                        "brand_logic": mm.group("brand").strip(),
+                    }
+                )
+
+    # ---------- 4) 解析 IV. 执行清单建议 -> routes{} ----------
+
+    routes: Dict[str, Any] = {
+        "execution_order": [],  # [{cc_id, priority}, ...]
+        "recommended_channels": [],  # [{cc_id, channels}, ...]
+    }
+
+    if sec_IV:
+        # 4.1 优先级建议（高/中/低）
+        # 形如：- **高**: MLC-01-CC1，针对……
+        priority_pattern = re.compile(
+            r"-\s*(?:\*\*)?(?P<prio>高|中|低)(?:\*\*)?\s*[:：]\s*(?P<rest>.+)",
+            flags=re.MULTILINE,
+        )
+
+        
+        for m in priority_pattern.finditer(sec_IV):
+            prio = m.group("prio")
+            rest = m.group("rest")
+
+            # 把 “MLC-01-CC1、MLC-01-CC2” 这种拆成数组
+            cc_ids = re.findall(r"(MLC-\d+-CC\d+)", rest)
+            if not cc_ids:
+                # 如果实在没匹配到，至少保留一条“无 cc_id”的记录
+                routes["execution_order"].append(
+                    {"cc_id": "", "priority": prio, "text": rest.strip()}
+                )
+                continue
+
+            for cc_id in cc_ids:
+                routes["execution_order"].append(
+                    {
+                        "cc_id": cc_id,
+                        "priority": prio,
+                        "text": rest.strip(),
+                    }
+                )
+
+        # 4.2 发布渠道建议
+        # 形如：- **MLC-01-CC1**: xxx
+        channel_block = sec_IV
+        # 尝试只在“发布渠道建议”小节之后匹配
+        m_pub = re.search(r"####\s*发布渠道建议.*", sec_IV)
+        if m_pub:
+            channel_block = sec_IV[m_pub.end() :]
+
+        channel_pattern = re.compile(
+            r"-\s*\*\*(?P<cc_id>MLC-\d+-CC\d+)\*\*\s*[:：]\s*(?P<channels>.+)",
+            flags=re.MULTILINE,
+        )
+        
+        for m in channel_pattern.finditer(channel_block):
+            routes["recommended_channels"].append(
+                {
+                    "cc_id": m.group("cc_id").strip(),
+                    "channels": m.group("channels").strip(),
+                }
+            )
+
+        # 如果一个渠道都没匹配到，为了向后兼容，至少把 bullet 形式的渠道合并成一条
+        if not routes["recommended_channels"]:
+            # 简单从 sec_IV 中抓 “发布渠道建议” 后面的所有 "- xxx" 行
+            # 1) 找到包含“发布渠道建议”的那一行（无论有没有 #### 或 **）
+            m_title = re.search(r"发布渠道建议", sec_IV)
+            if m_title:
+                tail_block = sec_IV[m_title.end() :]
+            else:
+                tail_block = sec_IV
+
+            # 2) 抓所有以 "- " 开头的行作为渠道
+            ch_lines = []
+            for ln in tail_block.splitlines():
+                ln = ln.strip()
+                if ln.startswith("- "):
+                    ch_lines.append(re.sub(r"^-+\s*", "", ln))
+
+            if ch_lines:
+                routes["recommended_channels"].append(
+                    {
+                        "cc_id": "",
+                        "channels": "；".join(ch_lines),
+                    }
+                )
+
+
+    # ---------- 5) 组装 Blueprint ----------
+
+    blueprint: Dict[str, Any] = {
+        "run_id": run_id,
+        "blueprint_id": blueprint_id,
+        "brand": {
+            "brief": brand_brief or "",
+            "core_claim": must_expose or "",
+            "user_question": user_question or "",
+        },
+        "chains": chains,
+        "titles": titles,
+        "abstracts": abstracts,
+        "routes": routes,
+        "meta": {
+            "uuid": blueprint_id,
+            "created_at": "",  # 如需可在外层补时间戳
+            "stage": "stage2_blueprint_ready",
+            "version": "2.0",
+        },
+    }
+
+    return blueprint
+
+# ============================
+# Blueprint 一致性检查工具
+# ============================
+
+def check_blueprint_consistency(blueprint: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    对 Blueprint 中的 CC_ID 进行对齐检查：
+    - chains / titles / abstracts / routes.recommended_channels
+    返回一个结构化的诊断结果，便于后续打 log 或前端展示。
+    """
+    chains_cc = {
+        c.get("cc_id") for c in blueprint.get("chains", []) if c.get("cc_id")
+    }
+    titles_cc = {
+        t.get("cc_id") for t in blueprint.get("titles", []) if t.get("cc_id")
+    }
+    abstracts_cc = {
+        a.get("cc_id") for a in blueprint.get("abstracts", []) if a.get("cc_id")
+    }
+    routes_cc = {
+        r.get("cc_id")
+        for r in blueprint.get("routes", {}).get("recommended_channels", [])
+        if r.get("cc_id")
+    }
+
+    all_cc = sorted(chains_cc | titles_cc | abstracts_cc | routes_cc)
+
+    only_in_chains = sorted(chains_cc - titles_cc - abstracts_cc - routes_cc)
+    only_in_titles = sorted(titles_cc - chains_cc - abstracts_cc - routes_cc)
+    only_in_abstracts = sorted(abstracts_cc - chains_cc - titles_cc - routes_cc)
+    only_in_routes = sorted(routes_cc - chains_cc - titles_cc - abstracts_cc)
+
+    return {
+        "all_cc_ids": all_cc,
+        "chains_cc": sorted(chains_cc),
+        "titles_cc": sorted(titles_cc),
+        "abstracts_cc": sorted(abstracts_cc),
+        "routes_cc": sorted(routes_cc),
+        "only_in_chains": only_in_chains,
+        "only_in_titles": only_in_titles,
+        "only_in_abstracts": only_in_abstracts,
+        "only_in_routes": only_in_routes,
+        # 简单的健康度指标（0~1 之间，大致感知用）
+        "alignment_score": _calc_alignment_score(
+            chains_cc, titles_cc, abstracts_cc, routes_cc
+        ),
+    }
+
+
+def _calc_alignment_score(
+    chains_cc: set, titles_cc: set, abstracts_cc: set, routes_cc: set
+) -> float:
+    """
+    非严谨打分，只是给一个 0~1 的 alignment 感知：
+    - 所有集合完全重合时为 1.0
+    - 其他情况下随重叠程度下降
+    """
+    sets = [chains_cc, titles_cc, abstracts_cc, routes_cc]
+    non_empty = [s for s in sets if s]
+    if len(non_empty) <= 1:
+        return 1.0  # 只有一个集合时，不谈对齐，算满分
+
+    # 交集 / 并集 作为简单指标
+    union = set().union(*non_empty)
+    inter = non_empty[0].intersection(*non_empty[1:])
+    if not union:
+        return 1.0
+
+    return round(len(inter) / len(union), 3)

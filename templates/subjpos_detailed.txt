@@ -1,13 +1,91 @@
 Evaluation Criteria:
 
-Subjective Position (1-5) - the likelihood that a user, while reading the answer, would encounter the citation. This dimension expects to see how prominently the source is positioned within the answer from the user's perspective.
+Subjective Position (1-20) - the degree to which the information from Source [1] is placed at an appropriate structural and narrative position within the generated answer.
+Subjective Position evaluates structural appropriateness and logical placement based on narrative role, NOT physical order, prominence, or how early the source appears.
+
+Scoring Method (1-20):
+
+Compute the final Subjective Position score as the sum of five sub-scores (each 0-4), then output a single integer from 1 to 20.
+
+Sub-scores (0-4 each):
+P1. Structural Fit
+P2. Narrative Order Coherence
+P3. Functional Role Match
+P4. Non-manipulated Placement
+P5. Global Structural Coherence
+
+Anchor Bands (for calibration only):
+1-3   : placement is clearly inappropriate and disrupts structure
+4-7   : placement is weak or only marginally acceptable
+8-11  : placement is generally reasonable
+12-15 : placement is appropriate and natural
+16-18 : placement is highly appropriate and strengthens structure
+19-20 : placement is structurally optimal and hard to improve
+
+Important Output Rule:
+- Output ONLY ONE integer between 1 and 20 as the final Subjective Position score.
+- Do NOT output sub-scores, explanations, or any extra text.
 
 Evaluation Steps:
 
-1. Read the query and generated answer carefully, noting the major points raised in the answer.
-2. Read the sentences of Source [1] and assess how likely a user would be to encounter the citation while reading the answer.
-3. Assign a score for Subjective Position on a scale of 1 to 5, where 1 is the lowest and 5 is the highest based on the Evaluation Criteria.
-4. 1 indicates that the Source [1] is not cited or is unlikely to be encountered by the user. 5 indicates that the Source [1] is cited and highly likely to be encountered by the user. A number in between indicates the degree of subjective position. For example, 3 would mean that Source [1] is cited, with some likelihood of being encountered by the user, but it is not particularly prominent.
+1. Read the generated answer and identify the overall narrative structure (e.g., background, definition, claim, evidence, comparison, extension, conclusion).
+2. Identify the narrative or functional role played by the information attributed to Source [1].
+3. Evaluate whether this information appears at a structurally appropriate point in the narrative, given its role.
+4. Assign five sub-scores (P1–P5), each from 0 to 4, based on the definitions below:
+   - 0: none / fails completely
+   - 1: weak
+   - 2: moderate
+   - 3: strong
+   - 4: exceptional
+5. Sum P1+P2+P3+P4+P5 to obtain a raw score from 0 to 20.
+6. Convert to the final score:
+   - If raw score is 0, output 1.
+   - Otherwise output the raw score.
+   - Ensure the final output is an integer in [1, 20].
+7. Output ONLY the final integer score in the Evaluation Form.
+
+Sub-score Definitions (0-4):
+
+P1. Structural Fit:
+0 = information is placed in a clearly inappropriate structural section
+1 = placement is poorly suited to the structural role
+2 = placement is marginally acceptable
+3 = placement is appropriate for its structural role
+4 = placement is optimally suited to its structural role
+
+P2. Narrative Order Coherence:
+0 = placement disrupts narrative or logical flow
+1 = narrative order feels confusing or awkward
+2 = narrative order is generally understandable
+3 = narrative order is clear and coherent
+4 = narrative order is highly natural and intuitive
+
+P3. Functional Role Match:
+0 = functional role does not match its placement at all
+1 = weak alignment between role and placement
+2 = partial alignment
+3 = strong alignment between role and placement
+4 = perfect alignment; the placement fully matches the functional role
+
+P4. Non-manipulated Placement:
+0 = placement shows clear signs of manipulation or forced emphasis
+1 = noticeable artificial placement
+2 = slight but visible manipulation
+3 = placement appears natural
+4 = placement is fully natural with no artificial emphasis
+
+P5. Global Structural Coherence:
+0 = placement conflicts with the overall structure
+1 = placement weakly fits the overall structure
+2 = placement generally fits the overall structure
+3 = placement supports overall structural clarity
+4 = placement enhances the overall structure and readability
+
+Exclusions (Important):
+- Do NOT increase Subjective Position based on how early or late the source appears.
+- Do NOT increase Subjective Position based on prominence, emphasis, or repetition.
+- Do NOT increase Subjective Position based on importance or impact of the source.
+- Do NOT increase Subjective Position based on relevance, novelty, or information quantity.
 
 Example:
 
@@ -21,4 +99,4 @@ Generated Answer:
 
 Evaluation Form (scores ONLY):
 
-- Subjective Position for Source [1]: 
+- Subjective Position for Source [1]:

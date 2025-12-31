@@ -1,13 +1,92 @@
 Evaluation Criteria:
 
-Diversity of Ideas (1-5) - the range of different ideas or topics discussed in the citation. This dimension expects to see how much the source contributes to a comprehensive and balanced answer to the user's query.
+Diversity (1-20) - the degree to which the information attributed to Source [1] covers multiple distinct aspects, perspectives, or dimensions relevant to the query, thereby contributing to a more comprehensive and balanced answer.
+Diversity evaluates the breadth and distribution of perspectives within Source [1]'s contributed content, NOT the number of information units, novelty, importance, or relevance alone.
+
+Scoring Method (1-20):
+
+Compute the final Diversity score as the sum of five sub-scores (each 0-4), then output a single integer from 1 to 20.
+
+Sub-scores (0-4 each):
+D1. Topical Breadth
+D2. Perspective Variety
+D3. Balance Across Aspects
+D4. Non-overlap of Angles
+D5. Contribution to Overall Comprehensiveness
+
+Anchor Bands (for calibration only):
+1-3   : minimal diversity; content focuses on a single narrow aspect
+4-7   : limited diversity; slight expansion but clearly unbalanced
+8-11  : moderate diversity; covers several aspects with some imbalance
+12-15 : good diversity; multiple aspects covered in a reasonably balanced way
+16-18 : strong diversity; well-distributed and complementary aspects
+19-20 : exceptional diversity; broad, balanced coverage that clearly enhances completeness
+
+Important Output Rule:
+- Output ONLY ONE integer between 1 and 20 as the final Diversity score.
+- Do NOT output sub-scores, explanations, or any extra text.
 
 Evaluation Steps:
 
-1. Read the query and generated answer carefully, noting the major points raised in the answer.
-2. Read the sentences of Source [1] and assess the breadth of ideas or topics they cover and how they contribute to a comprehensive and balanced answer.
-3. Assign a score for Diversity on a scale of 1 to 5, where 1 is the lowest and 5 is the highest based on the Evaluation Criteria.
-4. 1 indicates that the Source [1] is not cited or does not discuss a diverse range of ideas or topics. 5 indicates that the Source [1] is cited and discusses a wide range of ideas or topics, contributing to a comprehensive and balanced answer. A number in between indicates the degree of diversity of the citation. For example, 3 would mean that Source [1] is cited, with some diversity of ideas or topics, but it is not particularly comprehensive or balanced.
+1. Read the query and the generated answer carefully to understand what aspects or dimensions are relevant to a comprehensive response.
+2. Identify the specific content in the answer that is attributed to Source [1].
+3. Determine how many distinct aspects, perspectives, or dimensions are covered by Source [1]'s attributed content.
+4. Assign five sub-scores (D1–D5), each from 0 to 4, based on the definitions below:
+   - 0: none / fails completely
+   - 1: weak
+   - 2: moderate
+   - 3: strong
+   - 4: exceptional
+5. Sum D1+D2+D3+D4+D5 to obtain a raw score from 0 to 20.
+6. Convert to the final score:
+   - If raw score is 0, output 1.
+   - Otherwise output the raw score.
+   - Ensure the final output is an integer in [1, 20].
+7. Output ONLY the final integer score in the Evaluation Form.
+
+Sub-score Definitions (0-4):
+
+D1. Topical Breadth:
+0 = covers only a single narrow aspect
+1 = touches on a secondary aspect only briefly
+2 = covers two distinct aspects
+3 = covers multiple distinct aspects
+4 = covers a broad range of relevant aspects
+
+D2. Perspective Variety:
+0 = single perspective or dimension
+1 = minor variation within the same perspective
+2 = two clearly different perspectives
+3 = multiple independent perspectives
+4 = rich variety of perspectives with clear separation
+
+D3. Balance Across Aspects:
+0 = heavily concentrated on one aspect
+1 = clearly unbalanced distribution
+2 = somewhat unbalanced but acceptable
+3 = mostly balanced across aspects
+4 = well-balanced contribution across aspects
+
+D4. Non-overlap of Angles:
+0 = aspects largely overlap or repeat each other
+1 = significant overlap between aspects
+2 = some overlap present
+3 = minimal overlap between aspects
+4 = aspects are clearly distinct and complementary
+
+D5. Contribution to Overall Comprehensiveness:
+0 = adds no meaningful breadth to the answer
+1 = very limited contribution to completeness
+2 = some contribution to overall completeness
+3 = clearly improves the answer’s breadth and balance
+4 = substantially enhances the answer’s overall completeness
+
+Exclusions (Important):
+- Do NOT increase Diversity based on the number of information units.
+- Do NOT increase Diversity based on novelty or uniqueness.
+- Do NOT increase Diversity based on relevance alone.
+- Do NOT increase Diversity based on importance or influence.
+- Do NOT increase Diversity based on writing style or length.
 
 Example:
 
@@ -21,4 +100,4 @@ Generated Answer:
 
 Evaluation Form (scores ONLY):
 
-- Diversity for Source [1]: 
+- Diversity for Source [1]:

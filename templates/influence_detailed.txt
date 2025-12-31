@@ -1,13 +1,93 @@
 Evaluation Criteria:
 
-Influence of Citation (1-5) - the degree to which the answer depends on the citation. This dimension expects to see how much the source contributes to the completeness, coherence, and overall quality of the answer.
+Influence (1-20) - the degree to which the information attributed to Source [1] materially strengthens the answer’s core conclusion, credibility, or decision confidence.
+Influence is assessed via a counterfactual test: whether removing Source [1]'s attributed content would noticeably weaken the answer’s conclusion.
+
+Scoring Method (1-20):
+
+Compute the final Influence score as the sum of five sub-scores (each 0-4), then output a single integer from 1 to 20.
+
+Sub-scores (0-4 each):
+I1. Conclusion Dependency
+I2. Evidential Support Strength
+I3. Persuasive Gain
+I4. Non-substitutability
+I5. Contribution to Conclusion Stability
+
+Anchor Bands (for calibration only):
+1-3   : negligible influence; removal causes almost no change
+4-7   : weak influence; minor supporting role
+8-11  : moderate influence; strengthens but not critical
+12-15 : strong influence; conclusion relies on it
+16-18 : very strong influence; conclusion heavily depends on it
+19-20 : decisive influence; removal would seriously undermine the conclusion
+
+Important Output Rule:
+- Output ONLY ONE integer between 1 and 20 as the final Influence score.
+- Do NOT output sub-scores, explanations, or any extra text.
 
 Evaluation Steps:
 
-1. Read the query and generated answer carefully, noting the major points raised in the answer.
-2. Read the sentences of Source [1] and assess how much they contribute to the completeness, coherence, and overall quality of the answer.
-3. Assign a score for Influence on a scale of 1 to 5, where 1 is the lowest and 5 is the highest based on the Evaluation Criteria.
-4. 1 indicates that the Source [1] is not cited or does not contribute to the completeness, coherence, or quality of the answer. 5 indicates that the Source [1] is cited and contributes significantly to the completeness, coherence, and quality of the answer. A number in between indicates the degree of influence of the citation. For example, 3 would mean that Source [1] is cited, with some influence on the completeness, coherence, or quality of the answer, but it is not crucial.
+1. Read the query and the generated answer to identify the main conclusion(s).
+2. Identify the specific content in the answer that is attributed to Source [1].
+3. Perform a counterfactual check by mentally removing Source [1]'s attributed content.
+4. Evaluate how much weaker the answer’s conclusion becomes after removal.
+5. Assign five sub-scores (I1–I5), each from 0 to 4, based on the definitions below:
+   - 0: none / fails completely
+   - 1: weak
+   - 2: moderate
+   - 3: strong
+   - 4: exceptional
+6. Sum I1+I2+I3+I4+I5 to obtain a raw score from 0 to 20.
+7. Convert to the final score:
+   - If raw score is 0, output 1.
+   - Otherwise output the raw score.
+   - Ensure the final output is an integer in [1, 20].
+8. Output ONLY the final integer score in the Evaluation Form.
+
+Sub-score Definitions (0-4):
+
+I1. Conclusion Dependency:
+0 = conclusion does not depend on Source [1]
+1 = weak dependency
+2 = partial dependency
+3 = strong dependency
+4 = critical dependency; removal significantly weakens the conclusion
+
+I2. Evidential Support Strength:
+0 = provides no evidence
+1 = background context only
+2 = auxiliary evidence
+3 = primary supporting evidence
+4 = decisive evidence supporting the conclusion
+
+I3. Persuasive Gain:
+0 = no noticeable change in persuasiveness
+1 = slight improvement
+2 = moderate improvement
+3 = significant improvement
+4 = major improvement that alters confidence or judgment
+
+I4. Non-substitutability:
+0 = easily replaceable without loss of strength
+1 = largely replaceable
+2 = partially replaceable
+3 = difficult to replace equivalently
+4 = nearly irreplaceable for maintaining conclusion strength
+
+I5. Contribution to Conclusion Stability:
+0 = no contribution to stability
+1 = very limited contribution
+2 = some stabilizing effect
+3 = clearly enhances stability
+4 = substantially stabilizes and anchors the conclusion
+
+Exclusions (Important):
+- Do NOT score Influence based on source authority or reputation.
+- Do NOT score Influence based on relevance alone.
+- Do NOT score Influence based on novelty or uniqueness.
+- Do NOT score Influence based on number of information units.
+- Do NOT score Influence based on placement or writing style.
 
 Example:
 
@@ -21,4 +101,4 @@ Generated Answer:
 
 Evaluation Form (scores ONLY):
 
-- Influence for Source [1]: 
+- Influence for Source [1]:

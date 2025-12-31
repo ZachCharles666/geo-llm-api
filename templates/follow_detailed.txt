@@ -1,13 +1,91 @@
 Evaluation Criteria:
 
-Follow-Up Likelihood (1-5) - the likelihood that a user, after reading the citation, would navigate to the website for more information. This dimension expects to see how much the source engages the user's interest and prompts them to seek more information.
+Follow-up Likelihood (1-20) - the degree to which the information from Source [1] naturally encourages further exploration of the topic after reading the generated answer.
+Follow-up evaluates whether the content opens a meaningful and non-forced path for continued understanding, NOT whether it uses questions, calls-to-action, or promotional language.
+
+Scoring Method (1-20):
+
+Compute the final Follow-up score as the sum of five sub-scores (each 0-4), then output a single integer from 1 to 20.
+
+Sub-scores (0-4 each):
+F1. Cognitive Open Loop
+F2. Exploration Path Clarity
+F3. Perceived Value of Further Exploration
+F4. Non-forced Engagement
+F5. Topical Continuity
+
+Anchor Bands (for calibration only):
+1-3   : no meaningful follow-up motivation
+4-7   : weak or unclear follow-up potential
+8-11  : moderate follow-up opportunity, but not compelling
+12-15 : clear and natural follow-up encouragement
+16-18 : strong, non-forced motivation to continue exploring
+19-20 : exceptionally natural and high-value follow-up pathways
+
+Important Output Rule:
+- Output ONLY ONE integer between 1 and 20 as the final Follow-up score.
+- Do NOT output sub-scores, explanations, or any extra text.
 
 Evaluation Steps:
 
-1. Read the query and generated answer carefully, noting the major points raised in the answer.
-2. Read the sentences of Source [1] and assess how likely a user would be to navigate to the website for more information after reading the citation.
-3. Assign a score for Follow-Up Likelihood on a scale of 1 to 5, where 1 is the lowest and 5 is the highest based on the Evaluation Criteria.
-4. 1 indicates that the Source [1] is not cited or does not engage the user's interest. 5 indicates that the Source [1] is cited and highly likely to prompt the user to seek more information. A number in between indicates the degree of follow-up likelihood. For example, 3 would mean that Source [1] is cited, with some likelihood of prompting the user to seek more information, but it is not particularly engaging.
+1. Read the query and the generated answer carefully, focusing on whether the answer feels fully closed or naturally invites deeper understanding.
+2. Read the sentences attributed to Source [1] and assess whether they open a meaningful next step for exploration related to the same topic.
+3. Assign five sub-scores (F1–F5), each from 0 to 4, based on the definitions below:
+   - 0: none / fails completely
+   - 1: weak
+   - 2: moderate
+   - 3: strong
+   - 4: exceptional
+4. Sum F1+F2+F3+F4+F5 to obtain a raw score from 0 to 20.
+5. Convert to the final score:
+   - If raw score is 0, output 1.
+   - Otherwise output the raw score.
+   - Ensure the final output is an integer in [1, 20].
+6. Output ONLY the final integer score in the Evaluation Form.
+
+Sub-score Definitions (0-4):
+
+F1. Cognitive Open Loop:
+0 = the content fully closes the topic with no room for further inquiry
+1 = leaves a slight but unclear gap
+2 = leaves some identifiable but weak open questions
+3 = clearly leaves meaningful aspects unexplored
+4 = strongly but naturally leaves important aspects open for deeper understanding (not teasing)
+
+F2. Exploration Path Clarity:
+0 = no clear direction for further exploration
+1 = direction is extremely vague
+2 = a possible direction can be inferred
+3 = a clear and reasonable direction for further exploration is implied
+4 = multiple or very clear natural directions for deeper exploration are suggested
+
+F3. Perceived Value of Further Exploration:
+0 = further exploration would add little value
+1 = limited additional value
+2 = some additional value is likely
+3 = clear additional value from deeper exploration
+4 = high expected value from continued exploration of the topic
+
+F4. Non-forced Engagement:
+0 = relies heavily on calls-to-action, questions, or promotional prompts
+1 = noticeable forced or manipulative engagement signals
+2 = mostly natural but with slight artificial prompting
+3 = natural engagement without overt prompting
+4 = fully intrinsic engagement driven by informational curiosity
+
+F5. Topical Continuity:
+0 = further exploration would significantly drift from the current topic
+1 = weak topical continuity
+2 = partial topical continuity
+3 = strong topical continuity
+4 = seamless continuation along the same logical and thematic line
+
+Exclusions (Important):
+- Do NOT increase Follow-up based on the presence of question marks.
+- Do NOT increase Follow-up based on calls-to-action or promotional language.
+- Do NOT increase Follow-up based on importance, authority, or impact of the source.
+- Do NOT increase Follow-up based on novelty or uniqueness alone.
+- Do NOT increase Follow-up based on information volume or citation prominence.
 
 Example:
 
@@ -21,4 +99,4 @@ Generated Answer:
 
 Evaluation Form (scores ONLY):
 
-- Follow-Up Likelihood for Source [1]: 
+- Follow-up for Source [1]:

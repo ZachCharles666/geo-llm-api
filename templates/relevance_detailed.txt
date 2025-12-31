@@ -1,13 +1,84 @@
 Evaluation Criteria:
 
-Relevance of Citation to Query (1-5) - the degree to which the citation text is directly related to the query. This dimension expects to see how well the source addresses the user's query and provides useful and pertinent information.
+Relevance of Citation to Query (1-20) - the degree to which the content from Source [1] directly matches the user’s query and can legitimately support the generated answer in a useful, precise, and context-consistent way.
+Relevance is NOT about how persuasive the wording is, how novel the content is, how much of the answer it covers, or where it appears in the answer. Focus only on topical match and support to the query/answer.
+
+Scoring Method (1-20):
+
+Compute the final Relevance score as the sum of five sub-scores (each 0-4), then output a single integer from 1 to 20.
+
+Sub-scores (0-4 each):
+R1. Topical Match (topic alignment to the query)
+R2. Claim Support Strength (how strongly it supports key claims used in the answer)
+R3. Specificity & Concreteness (how concrete, bounded, and checkable the information is)
+R4. Usability to the Query (how directly usable it is for answering the query, without heavy extrapolation)
+R5. Context Consistency (how well it fits the way it is used/cited in the generated answer; avoids mismatch or misleading support)
+
+Anchor Bands (for calibration only):
+1-3   : almost irrelevant / not legitimately usable
+4-7   : weakly related (same broad area but off-target or weak support)
+8-11  : moderately relevant (supports some parts but not central or not concrete enough)
+12-15 : highly relevant (clear support to major points; reasonably concrete and usable)
+16-18 : strongly relevant (high support strength + high usability + good citation fit)
+19-20 : near-critical source (precise, decisive support; hard to replace)
+
+Important Output Rule:
+- Output ONLY ONE integer between 1 and 20 as the final Relevance score for Source [1].
+- Do NOT output sub-scores, explanations, or any extra text.
 
 Evaluation Steps:
 
-1. Read the query and generated answer carefully, noting the major points raised in the answer.
-2. Read the sentences of Source [1] and assess how directly they answer the user's query. Consider the completeness, precision, clarity, and usefulness of the information provided by Source [1].
-3. Assign a score for Relevance on a scale of 1 to 5, where 1 is the lowest and 5 is the highest based on the Evaluation Criteria.
-4. 1 indicates that the Source [1] is not cited or provides no relevant information. 5 indicates that the Source [1] is cited and provides highly relevant, complete, precise, clear, and useful information. A number in between indicates the degree of relevance of the information provided by Source [1]. For example, 3 would mean that Source [1] is cited, with some relevant information, but it may not be complete, precise, clear, or particularly useful.
+1. Read the query and the generated answer carefully, identifying the major points/claims the answer makes.
+2. Read the sentences attributed to Source [1] and judge whether they are legitimately usable to support those answer claims, in the context of the query.
+3. Assign five sub-scores (R1-R5), each from 0 to 4, based on the definitions below:
+   - 0: none / fails completely
+   - 1: weak / minimal
+   - 2: partial / moderate
+   - 3: strong / clear
+   - 4: excellent / precise and decisive
+4. Sum R1+R2+R3+R4+R5 to get a raw score from 0 to 20.
+5. Convert to the final score:
+   - If raw score is 0, output 1.
+   - Otherwise output raw score.
+   - Ensure the final output is an integer in [1, 20].
+6. Output ONLY the final integer score in the Evaluation Form.
+
+Sub-score Definitions (0-4):
+
+R1. Topical Match:
+0 = unrelated to the query
+1 = weakly related (same broad domain, but not addressing the query)
+2 = partially aligned (addresses only a minor slice of the query)
+3 = highly aligned (directly addresses key aspects of the query)
+4 = precisely aligned (targets the exact core of the query with minimal drift)
+
+R2. Claim Support Strength:
+0 = cannot support any meaningful claim in the answer
+1 = supports only generic background, not key claims
+2 = supports some key statements but leaves gaps or weak linkage
+3 = supports most key statements clearly and legitimately
+4 = provides decisive, hard-to-replace support for key conclusions/claims
+
+R3. Specificity & Concreteness:
+0 = vague/general, no concrete substance
+1 = lightly specific (mentions concepts but lacks boundaries/details)
+2 = moderately specific (some constraints/examples, but still broad)
+3 = very specific (clear points, mechanisms, scope, or conditions)
+4 = highly specific and checkable (definitions, numbers, steps, boundaries, or testable details)
+
+R4. Usability to the Query:
+0 = not usable for answering the query
+1 = usable only as peripheral context
+2 = useful but requires significant extrapolation to answer the query
+3 = directly usable for answering major parts of the query
+4 = immediately usable to form a high-quality answer (minimal transformation needed)
+
+R5. Context Consistency:
+0 = mismatched with how it is cited; risks misleading support
+1 = weak fit; needs heavy interpretation to justify its use
+2 = basic fit; generally aligns but not tight
+3 = strong fit; supports the cited statements with clear alignment
+4 = tight fit; almost one-to-one support for the cited statements in context
 
 Example:
 
@@ -21,4 +92,4 @@ Generated Answer:
 
 Evaluation Form (scores ONLY):
 
-- Relevance for Source [1]: 
+- Relevance for Source [1]:

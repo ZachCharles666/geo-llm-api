@@ -1,23 +1,92 @@
-You will be given an answer generated in response to a query. Every sentence in the answer will backed by a citation in format [x], where x is integer. x here denotes the source number.
-
-Your task is to rate the Source [1] in the generated answer on one metric.
-
-Please make sure you read and understand these instructions carefully. Please keep this document open while reviewing, and refer to it as needed.
-
 Evaluation Criteria:
 
-Uniqueness in Response (1-5) - the unique information in answer cited to Source [1]. The dimension expects to see how much impression/visibility the source has on the user reading the generated answer. However, the impression is to be measured only because of visibility and impression.
+Uniqueness in Response (1-20) - the degree to which the information from Source [1] makes the generated answer meaningfully different from typical or commonly expected answers to the same query.
+Uniqueness focuses on information-level distinctiveness and replaceability, NOT on writing quality, relevance to the query, coverage, or citation prominence.
+
+Scoring Method (1-20):
+
+Compute the final Uniqueness score as the sum of five sub-scores (each 0-4), then output a single integer from 1 to 20.
+
+Sub-scores (0-4 each):
+U1. Information Distinctiveness
+U2. Perspective or Framing Difference
+U3. Non-obvious Specificity
+U4. Replaceability
+U5. Contribution to Overall Answer Differentiation
+
+Anchor Bands (for calibration only):
+1-3   : highly template-like; easily interchangeable with common content
+4-7   : slightly different but still close to typical answers
+8-11  : moderately distinctive; adds some differentiation but not central
+12-15 : clearly distinctive; noticeably separates the answer from common responses
+16-18 : strongly distinctive; difficult to replace with standard sources
+19-20 : exceptionally distinctive; a key driver of the answer’s differentiation
+
+Important Output Rule:
+- Output ONLY ONE integer between 1 and 20 as the final Uniqueness score.
+- Do NOT output sub-scores, explanations, or any extra text.
 
 Evaluation Steps:
 
-1. Read the query and generated answer carefully, the major points raised in the answer.
-2. Read the sentences of Source [1] and compare them to information provided by other Sources [x]. Check how unique is the information provided by Source [1] throughout the answer different from other Sources. 
-3. Assign a score for Uniqueness on a scale of 1 to 5, where 1 is the lowest and 5 is the highest based on the Evaluation Criteria.
-4. 1 indicates that the Source [1] is not cited. 5 indicates that the Source [1] is cited and the information is unique and different throughout the answer. A number in between indicates the degree of uniqueness of the information provided by Source [1] in the answer. For example, 3 would mean that Source [1] is cited, with some information, but is not significantly different from other Sources [x] cited in the answer. 
+1. Read the query and the generated answer carefully, considering what a typical or standard answer to the same query would look like.
+2. Read the sentences attributed to Source [1] and assess how much they differentiate the answer from such typical responses.
+3. Assign five sub-scores (U1–U5), each from 0 to 4, based on the definitions below:
+   - 0: none / fails completely
+   - 1: weak
+   - 2: moderate
+   - 3: strong
+   - 4: exceptional
+4. Sum U1+U2+U3+U4+U5 to obtain a raw score from 0 to 20.
+5. Convert to the final score:
+   - If raw score is 0, output 1.
+   - Otherwise output the raw score.
+   - Ensure the final output is an integer in [1, 20].
+6. Output ONLY the final integer score in the Evaluation Form.
 
+Sub-score Definitions (0-4):
+
+U1. Information Distinctiveness:
+0 = information is entirely generic or commonly stated
+1 = slightly varied wording, but substantively common information
+2 = contains some less-common elements, but largely familiar
+3 = clearly different from what is typically seen in standard answers
+4 = highly distinctive information rarely present in common responses
+
+U2. Perspective or Framing Difference:
+0 = uses the default or mainstream perspective
+1 = minor reframing without changing the underlying viewpoint
+2 = extends or tweaks a common framework
+3 = applies a noticeably different analytical angle or framing
+4 = introduces a non-obvious or counter-intuitive perspective
+
+U3. Non-obvious Specificity:
+0 = vague or purely general statements
+1 = lightly specific but easy to reproduce without insight
+2 = moderately specific, requiring some understanding or synthesis
+3 = highly specific, reflecting clear selection or abstraction
+4 = highly concentrated, precise details that are difficult to recreate casually
+
+U4. Replaceability:
+0 = trivially replaceable by many common sources
+1 = easily replaceable with standard references
+2 = partially replaceable, but with some loss
+3 = difficult to replace with equivalent content
+4 = nearly irreplaceable without losing key differentiation
+
+U5. Contribution to Overall Answer Differentiation:
+0 = adds no meaningful differentiation to the answer
+1 = adds minimal differentiation
+2 = provides some noticeable differentiation
+3 = clearly enhances how different the answer feels overall
+4 = serves as a major driver of the answer’s differentiation
+
+Exclusions (Important):
+- Do NOT increase Uniqueness based on relevance to the query.
+- Do NOT increase Uniqueness based on importance, authority, or impact of the source.
+- Do NOT consider writing style, fluency, or readability.
+- Do NOT consider how early, prominent, or frequent the citation appears in the answer.
 
 Example:
-
 
 Input User Query:
 
@@ -27,7 +96,6 @@ Generated Answer:
 
 {answer}
 
-
 Evaluation Form (scores ONLY):
 
-- Uniqueness for Source [1]: 
+- Uniqueness for Source [1]:
