@@ -1517,6 +1517,50 @@ async def api_billing_upgrade(payload: BillingUpgradeIn):
     except Exception as e:
         return BillingUpgradeOut(ok=False, error=str(e))
 
+@app.get("/api/quota/me")
+def api_quota_me(request: Request):
+    """
+    返回当前登录用户本月 token quota（不消费 token）
+    设计：可匿名访问；token 无效时也不返回 401，避免前端出现 401 循环。
+    """
+    info = resolve_user_and_tier(request)
+    if not info.get("is_authed"):
+        return {
+            "ok": True,
+            "is_authed": False,
+            "tier": "free",
+            "yyyymm": _yyyymm_utc_now(),
+            "tokens_limit": 0,
+            "tokens_used": 0,
+            "tokens_remaining": 0,
+        }
+
+    user_id = info["user_id"]
+    tier = info.get("tier") or "free"
+    yyyymm = _yyyymm_utc_now()
+    default_limit = int(_tier_monthly_limit(tier))
+
+    row = _supabase_get_quota_row(user_id=user_id, yyyymm=yyyymm)
+    if row is None:
+        _supabase_upsert_quota_row(user_id=user_id, tier=tier, yyyymm=yyyymm, tokens_limit=default_limit)
+        row = _supabase_get_quota_row(user_id=user_id, yyyymm=yyyymm)
+
+    tokens_limit = int((row or {}).get("tokens_limit") or default_limit)
+    tokens_used = int((row or {}).get("tokens_used") or 0)
+    remaining = max(0, tokens_limit - tokens_used)
+
+    return {
+        "ok": True,
+        "is_authed": True,
+        "tier": tier,
+        "yyyymm": yyyymm,
+        "tokens_limit": tokens_limit,
+        "tokens_used": tokens_used,
+        "tokens_remaining": remaining,
+    }
+
+
+
 @app.post("/api/billing/webhook")
 async def api_billing_webhook(request: Request):
     """
