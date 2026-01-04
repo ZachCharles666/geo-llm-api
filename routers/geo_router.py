@@ -9,7 +9,7 @@ from geo_core import geo_rewrite
 from geo_evaluator import geo_score_pipeline
 from providers_groq_gemini import hub as providers_hub
 
-from api_brand import (
+from app.api.deps import (
     GEO_PROMPTS_VERSION,
     GEO_SCORE_VERSION,
     TTL_REWRITE_SEC,

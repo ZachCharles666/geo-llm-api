@@ -7,7 +7,7 @@ from geo_brand import build_and_validate_brand_brief
 from geo_core import geo_cot_stage1, geo_cot_stage2
 from geo_cot_parser import stage1_md_to_json, stage2_text_to_blueprint
 
-from api_brand import (
+from app.api.deps import (
     GEO_COT_VERSION,
     TTL_COT_SEC,
     _COT_CACHE,

@@ -16,8 +16,8 @@ build/
 # 常见的虚拟环境目录名称
 .venv/
 venv/
-env/
-ENV/
+.env/
+.ENV/
 
 # pytest cache (如果你使用 pytest)
 .pytest_cache/
@@ -42,3 +42,6 @@ Thumbs.db
 node_modules/ 
 npm-debug.log*
 yarn-error.log*
+
+*.rej
+*.orig
