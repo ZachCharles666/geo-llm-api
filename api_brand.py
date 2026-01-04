@@ -1396,6 +1396,7 @@ def api_quota_me(request: Request):
 
 
 
+# Router registrations (keep GEO/COT ordering and ensure billing/webhooks are exposed)
 from app.api.routers.billing import router as billing_router
 from app.api.routers.webhooks import router as webhooks_router
 from routers.cot_router import router as cot_router
