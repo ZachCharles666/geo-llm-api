@@ -8,6 +8,7 @@ import requests
 import stripe
 import re
 
+from app.services.payments import billing_core
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any, Literal, Tuple, cast
 from fastapi import FastAPI, Request, HTTPException
@@ -1296,6 +1297,56 @@ def _inv_extract_user_id_and_tier(inv: dict) -> tuple[str | None, str | None]:
         pass
 
     return (None, None)
+
+
+# ---------- Billing helpers sourced from billing_core ----------
+TIER_MONTHLY_TOKENS_FREE = billing_core.TIER_MONTHLY_TOKENS_FREE
+TIER_MONTHLY_TOKENS_ALPHA_BASE = billing_core.TIER_MONTHLY_TOKENS_ALPHA_BASE
+TIER_MONTHLY_TOKENS_ALPHA_PRO = billing_core.TIER_MONTHLY_TOKENS_ALPHA_PRO
+
+STRIPE_SECRET_KEY = billing_core.STRIPE_SECRET_KEY
+STRIPE_WEBHOOK_SECRET = billing_core.STRIPE_WEBHOOK_SECRET
+STRIPE_PRICE_ALPHA_BASE = billing_core.STRIPE_PRICE_ALPHA_BASE
+STRIPE_PRICE_ALPHA_PRO = billing_core.STRIPE_PRICE_ALPHA_PRO
+FRONTEND_ORIGIN = billing_core.FRONTEND_ORIGIN
+
+BILLING_TABLE_WEBHOOK_EVENTS = billing_core.BILLING_TABLE_WEBHOOK_EVENTS
+BILLING_TABLE_CUSTOMERS = billing_core.BILLING_TABLE_CUSTOMERS
+BILLING_TABLE_SUBSCRIPTIONS = billing_core.BILLING_TABLE_SUBSCRIPTIONS
+
+_must_env = billing_core._must_env
+_tier_monthly_limit = billing_core._tier_monthly_limit
+_yyyymm_utc_now = billing_core._yyyymm_utc_now
+_supabase_admin_headers = billing_core._supabase_admin_headers
+_supabase_get_quota_row = billing_core._supabase_get_quota_row
+_utc_now_iso = billing_core._utc_now_iso
+_supabase_upsert_quota_row = billing_core._supabase_upsert_quota_row
+_supabase_patch_quota_row = billing_core._supabase_patch_quota_row
+_quota_sync_after_payment = billing_core._quota_sync_after_payment
+_quota_ensure_row = billing_core._quota_ensure_row
+
+_sb_rest_url = billing_core._sb_rest_url
+_sb_rpc_url = billing_core._sb_rpc_url
+_sb_get_json = billing_core._sb_get_json
+_sb_post_json = billing_core._sb_post_json
+_sb_patch_json = billing_core._sb_patch_json
+_tier_from_price_id = billing_core._tier_from_price_id
+
+_supabase_get_profile_tier = billing_core._supabase_get_profile_tier
+_supabase_patch_profile_tier = billing_core._supabase_patch_profile_tier
+_profile_sync_tier_after_payment = billing_core._profile_sync_tier_after_payment
+_supabase_upsert_profile_row = billing_core._supabase_upsert_profile_row
+
+_sb_webhook_event_exists = billing_core._sb_webhook_event_exists
+_sb_webhook_event_insert = billing_core._sb_webhook_event_insert
+_sb_get_customer_id_by_user = billing_core._sb_get_customer_id_by_user
+_sb_upsert_customer = billing_core._sb_upsert_customer
+_sb_get_subscriptions_by_user = billing_core._sb_get_subscriptions_by_user
+_sb_user_has_effective_subscription = billing_core._sb_user_has_effective_subscription
+_sb_upsert_subscription = billing_core._sb_upsert_subscription
+_stripe_get_subscription_primary_price_id = billing_core._stripe_get_subscription_primary_price_id
+_iso_from_unix_ts = billing_core._iso_from_unix_ts
+_inv_extract_user_id_and_tier = billing_core._inv_extract_user_id_and_tier
 
 
 
