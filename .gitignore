@@ -1,3 +1,44 @@
-.env
+# Python
+# Byte-code files
+*.pyc
+__pycache__/
+*.pyo
+# Pyd files (Python dynamic module)
+*.pyd
+
+# Generated files
+*.egg
+*.egg-info
+dist/
+build/
+
+# Virtual environments
+# 常见的虚拟环境目录名称
+.venv/
+venv/
+env/
+ENV/
+
+# pytest cache (如果你使用 pytest)
+.pytest_cache/
+
+# 之前说的 patch 文件也可以顺便加上
 *.patch
 *.diff
+
+# Editors and IDEs
+# VSCode settings (只忽略用户设置，团队共享的配置可以保留)
+.vscode/settings.json
+.vscode/launch.json
+
+# Pycharm
+.idea/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# 如果你的项目里确实混入了 Node.js 的依赖，也在这里忽略
+node_modules/ 
+npm-debug.log*
+yarn-error.log*
