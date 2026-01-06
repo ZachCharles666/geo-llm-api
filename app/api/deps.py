@@ -8,6 +8,9 @@ import requests
 import stripe
 import re
 
+from app.domain.auth import service as auth_service
+from app.domain.quota import service as quota_service
+from app.infra.supabase import client as supabase_client
 from app.services.payments import billing_core
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any, Literal, Tuple, cast
@@ -23,22 +26,19 @@ import logging
 logger = logging.getLogger("uvicorn.error")
 load_dotenv()
 
-SUPABASE_URL = os.getenv("SUPABASE_URL", "").strip()
-SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "").strip()  # ✅ 后端也需要，用于 /auth/v1/user
-SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+SUPABASE_URL = supabase_client.SUPABASE_URL
+SUPABASE_ANON_KEY = supabase_client.SUPABASE_ANON_KEY  # ✅ 后端也需要，用于 /auth/v1/user
+SUPABASE_SERVICE_ROLE_KEY = supabase_client.SUPABASE_SERVICE_ROLE_KEY
 
-def _require_env(name: str, value: str):
-    if not value:
-        raise RuntimeError(f"Missing required env: {name}")
+_require_env = supabase_client._require_env
 
 # ✅ 仅在真正需要解析登录态时才强制检查 env，避免你本地开发某些路由不走鉴权时直接炸掉
 def _ensure_supabase_env_for_auth():
-    _require_env("SUPABASE_URL", SUPABASE_URL)
-    _require_env("SUPABASE_ANON_KEY", SUPABASE_ANON_KEY)
+    return supabase_client.ensure_supabase_env_for_auth()
+
 
 def _ensure_supabase_env_for_db():
-    _require_env("SUPABASE_URL", SUPABASE_URL)
-    _require_env("SUPABASE_SERVICE_ROLE_KEY", SUPABASE_SERVICE_ROLE_KEY)
+    return supabase_client.ensure_supabase_env_for_db()
     
     
 # =========================
@@ -49,49 +49,28 @@ def _ensure_supabase_env_for_db():
 # =========================
 
 # 月度 token 限额（可用 env 覆盖）
-TIER_MONTHLY_TOKENS_FREE = int(os.getenv("TIER_MONTHLY_TOKENS_FREE", "20000"))
-TIER_MONTHLY_TOKENS_ALPHA_BASE = int(os.getenv("TIER_MONTHLY_TOKENS_ALPHA_BASE", "200000"))
-TIER_MONTHLY_TOKENS_ALPHA_PRO = int(os.getenv("TIER_MONTHLY_TOKENS_ALPHA_PRO", "500000"))
+TIER_MONTHLY_TOKENS_FREE = quota_service.TIER_MONTHLY_TOKENS_FREE
+TIER_MONTHLY_TOKENS_ALPHA_BASE = quota_service.TIER_MONTHLY_TOKENS_ALPHA_BASE
+TIER_MONTHLY_TOKENS_ALPHA_PRO = quota_service.TIER_MONTHLY_TOKENS_ALPHA_PRO
 
 # 是否对 COT 也计费（你可以先 false，只对 rewrite/score 计费）
 CHARGE_COT = os.getenv("CHARGE_COT", "0").strip() == "1"
 
 def _tier_monthly_limit(tier: str) -> int:
-    t = (tier or "free").lower().strip()
-    if t == "alpha_base":
-        return TIER_MONTHLY_TOKENS_ALPHA_BASE
-    if t == "alpha_pro":
-        return TIER_MONTHLY_TOKENS_ALPHA_PRO
-    return TIER_MONTHLY_TOKENS_FREE
+    return quota_service.tier_monthly_limit(tier)
 
 def _yyyymm_utc_now() -> str:
-    return datetime.utcnow().strftime("%Y%m")
+    return quota_service.yyyymm_utc_now()
 
 def _supabase_admin_headers():
     # 与 _supabase_rpc_consume_tokens 保持一致（service role）
-    supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip()
-    return {
-        "apikey": supabase_key,
-        "Authorization": f"Bearer {supabase_key}",
-        "Content-Type": "application/json",
-    }
+    return supabase_client.supabase_admin_headers()
 
 def _supabase_get_quota_row(user_id: str, yyyymm: str):
-    supabase_url = os.getenv("SUPABASE_URL", "").strip().rstrip("/")
-    url = f"{supabase_url}/rest/v1/quota_monthly"
-    params = {
-        "select": "user_id,tier,yyyymm,tokens_limit,tokens_used,updated_at",
-        "user_id": f"eq.{user_id}",
-        "yyyymm": f"eq.{yyyymm}",
-        "limit": "1",
-    }
-    r = requests.get(url, headers=_supabase_admin_headers(), params=params, timeout=15)
-    r.raise_for_status()
-    rows = r.json() or []
-    return rows[0] if rows else None
+    return quota_service.supabase_get_quota_row(user_id=user_id, yyyymm=yyyymm)
 
 def _utc_now_iso():
-    return datetime.now(timezone.utc).isoformat()
+    return quota_service.utc_now_iso()
 
 def _supabase_upsert_quota_row(
     *,
@@ -101,24 +80,12 @@ def _supabase_upsert_quota_row(
     tokens_limit: int,
     reset_used: bool = False, # 支付成功建议设为 True，或者按需保持
 ):
-    # 这里的 ?on_conflict=user_id,yyyymm 是关键
-    url = _sb_rest_url("quota_monthly") + "?on_conflict=user_id,yyyymm"
-
-    payload = {
-        "user_id": user_id,
-        "yyyymm": yyyymm,
-        "tier": (tier or "free").strip().lower(),
-        "tokens_limit": int(tokens_limit),
-        "updated_at": _utc_now_iso(),
-    }
-    # 如果是支付成功同步，通常要把已用额度清零（或者不传，保持现状）
-    if reset_used:
-        payload["tokens_used"] = 0
-
-    return _sb_post_json(
-        url,
-        payload,
-        prefer="resolution=merge-duplicates,return=representation",
+    return quota_service.supabase_upsert_quota_row(
+        user_id=user_id,
+        tier=tier,
+        yyyymm=yyyymm,
+        tokens_limit=tokens_limit,
+        reset_used=reset_used,
     )
     
 def _supabase_patch_quota_row(
@@ -135,25 +102,12 @@ def _supabase_patch_quota_row(
     - upsert 在某些 RLS / content-type / prefer 情况下可能“看似成功但未更新”
     - PATCH 能更明确地覆盖 tier / tokens_limit（必要时 tokens_used=0）
     """
-    if not user_id or not yyyymm:
-        return None
-
-    url = _sb_rest_url("quota_monthly")
-    # PostgREST: PATCH /rest/v1/quota_monthly?user_id=eq.xxx&yyyymm=eq.202512
-    patch_url = f"{url}?user_id=eq.{user_id}&yyyymm=eq.{yyyymm}"
-
-    payload = {
-        "tier": (tier or "free").strip().lower(),
-        "tokens_limit": int(tokens_limit),
-        "updated_at": _utc_now_iso(),
-    }
-    if reset_used:
-        payload["tokens_used"] = 0
-
-    return _sb_patch_json(
-        patch_url,
-        payload,
-        prefer="return=representation",
+    return quota_service.supabase_patch_quota_row(
+        user_id=user_id,
+        yyyymm=yyyymm,
+        tier=tier,
+        tokens_limit=tokens_limit,
+        reset_used=reset_used,
     )
 
 
@@ -174,55 +128,8 @@ def _quota_sync_after_payment(
     if not user_id:
         return None
 
-    tier = (tier or "free").strip().lower()
-    yyyymm = yyyymm or _yyyymm_utc_now()
-    tokens_limit = int(_tier_monthly_limit(tier))
-
-    # 1) upsert
-    try:
-        _supabase_upsert_quota_row(
-            user_id=user_id,
-            tier=tier,
-            yyyymm=yyyymm,
-            tokens_limit=tokens_limit,
-            reset_used=reset_used,
-        )
-    except Exception as e:
-        # upsert 失败要可见
-        raise RuntimeError(f"[quota_sync] upsert failed: {e}")
-
-    # 2) verify read
-    row = _supabase_get_quota_row(user_id=user_id, yyyymm=yyyymm)
-    cur_tier = ((row or {}).get("tier") or "").strip().lower()
-    cur_limit = int((row or {}).get("tokens_limit") or 0)
-
-    if row and cur_tier == tier and cur_limit == tokens_limit:
-        return row
-
-    # 3) fallback PATCH
-    try:
-        _supabase_patch_quota_row(
-            user_id=user_id,
-            yyyymm=yyyymm,
-            tier=tier,
-            tokens_limit=tokens_limit,
-            reset_used=reset_used,
-        )
-    except Exception as e:
-        raise RuntimeError(f"[quota_sync] patch failed: {e}")
-
-    # 4) verify again
-    row2 = _supabase_get_quota_row(user_id=user_id, yyyymm=yyyymm)
-    cur_tier2 = ((row2 or {}).get("tier") or "").strip().lower()
-    cur_limit2 = int((row2 or {}).get("tokens_limit") or 0)
-
-    if row2 and cur_tier2 == tier and cur_limit2 == tokens_limit:
-        return row2
-
-    raise RuntimeError(
-        f"[quota_sync] verify failed after patch. "
-        f"expect(tier={tier},limit={tokens_limit}) "
-        f"got(row={row2})"
+    return quota_service.quota_sync_after_payment(
+        user_id=user_id, tier=tier, yyyymm=yyyymm, reset_used=reset_used
     )
 
 
@@ -232,54 +139,7 @@ def _quota_ensure_row(user_id: str, tier: str, yyyymm: str):
     v0 策略：只做 upsert 初始化/修正 limit，不强行重置 tokens_used（避免误伤正在使用的用户）。
     你如果希望“支付成功时立刻重置本月额度”，可在这里把 tokens_used 置 0（见注释）。
     """
-    if not user_id:
-        return None
-
-    tier = (tier or "free").lower().strip()
-    yyyymm = yyyymm or _yyyymm_utc_now()
-    default_limit = int(_tier_monthly_limit(tier))
-
-    row = _supabase_get_quota_row(user_id=user_id, yyyymm=yyyymm)
-    if row is None:
-        # 初始化
-        ret =  _supabase_upsert_quota_row(
-            user_id=user_id,
-            tier=tier,
-            yyyymm=yyyymm,
-            tokens_limit=default_limit,
-        )
-        try:
-            verify = _supabase_get_quota_row(user_id=user_id, yyyymm=yyyymm)
-            print("[billing] quota verify:", {"user_id": user_id, "yyyymm": yyyymm, "row": verify})
-        except Exception as e:
-            print("[billing] quota verify failed:", e)
-        return ret
-
-    # 如果 tier/limit 不匹配，做一次修正性 upsert（merge-duplicates）
-    try:
-        cur_tier = (row.get("tier") or "").lower().strip() or "free"
-        cur_limit = int(row.get("tokens_limit") or 0)
-    except Exception:
-        cur_tier, cur_limit = "free", 0
-
-    if cur_tier != tier or cur_limit != default_limit:
-        # ⚠️ 这里复用 upsert：会把 tokens_used 重置为 0（因为你的 _supabase_upsert_quota_row 写死 tokens_used=0）
-        # 如果你“不想重置 tokens_used”，需要单独实现 PATCH；但你当前的问题就是要“支付后同步镜像”，
-        # 对 alpha-pro 用户来说，支付后把 tokens_used 清零通常是可接受且更符合直觉的。
-        ret =  _supabase_upsert_quota_row(
-            user_id=user_id,
-            tier=tier,
-            yyyymm=yyyymm,
-            tokens_limit=default_limit,
-        )
-        try:
-            verify = _supabase_get_quota_row(user_id=user_id, yyyymm=yyyymm)
-            print("[billing] quota verify:", {"user_id": user_id, "yyyymm": yyyymm, "row": verify})
-        except Exception as e:
-            print("[billing] quota verify failed:", e)
-        return ret
-
-    return row
+    return quota_service.quota_ensure_row(user_id=user_id, tier=tier, yyyymm=yyyymm)
 
 
 def _supabase_rpc_consume_tokens(
@@ -294,31 +154,14 @@ def _supabase_rpc_consume_tokens(
     Call Supabase PostgREST RPC: /rest/v1/rpc/consume_tokens
     Atomic monthly quota consume with addon_unlimited bypass.
     """
-    _ensure_supabase_env_for_db()
-
-    url = f"{SUPABASE_URL}/rest/v1/rpc/consume_tokens"
-    headers = {
-        "apikey": SUPABASE_SERVICE_ROLE_KEY,
-        "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
-        "Content-Type": "application/json",
-    }
-
-    default_limit = _tier_monthly_limit(tier)
-
-    payload = {
-        "p_user_id": user_id,
-        "p_kind": kind,
-        "p_tokens_in": int(tokens_in or 0),
-        "p_tokens_out": int(tokens_out or 0),
-        "p_tokens_total": int(tokens_total or 0),
-        "p_tokens_limit_default": int(default_limit),
-    }
-
-    r = requests.post(url, headers=headers, json=payload, timeout=15)
-    if r.status_code >= 300:
-        raise RuntimeError(f"Supabase RPC consume_tokens failed: {r.status_code} {r.text}")
-
-    return r.json() or {}
+    return quota_service.supabase_rpc_consume_tokens(
+        user_id=user_id,
+        tier=tier,
+        kind=kind,
+        tokens_in=tokens_in,
+        tokens_out=tokens_out,
+        tokens_total=tokens_total,
+    )
 
 def _quota_block_response(consumed: dict) -> JSONResponse:
     """
@@ -351,196 +194,24 @@ _TIER_CACHE_TTL_SEC = 60.0
 
 
 def _get_bearer_token(request: Request) -> str | None:
-    """
-    从 Authorization: Bearer <token> 取 Supabase access_token
-    """
-    auth = request.headers.get("authorization") or request.headers.get("Authorization")
-    if not auth:
-        return None
-    parts = auth.split()
-    if len(parts) == 2 and parts[0].lower() == "bearer":
-        return parts[1].strip()
-    return None
+    return auth_service.get_bearer_token(request)
 
 def _supabase_get_user_id(access_token: str) -> str | None:
-    """
-    用 Supabase Auth endpoint 校验 JWT 并拿到 user.id
-    """
-    _ensure_supabase_env_for_auth()
-    url = f"{SUPABASE_URL}/auth/v1/user"
-    headers = {
-        "apikey": SUPABASE_ANON_KEY,                 # 必须
-        "Authorization": f"Bearer {access_token}",   # 必须
-    }
-    r = requests.get(url, headers=headers, timeout=10)
-    if r.status_code != 200:
-        return None
-    data = r.json() or {}
-    user = data.get("user") or data  # 兼容不同返回
-    return user.get("id")
+    return auth_service.supabase_get_user_id(access_token)
 
 def _supabase_auth_get_user(access_token: str) -> dict | None:
-    """
-    用 Supabase Auth endpoint 校验 JWT 并拿到 user（id/email）
-    返回：{"id": "...", "email": "..."} 或 None
-    """
-    _ensure_supabase_env_for_auth()
-    url = f"{SUPABASE_URL}/auth/v1/user"
-    headers = {
-        "apikey": SUPABASE_ANON_KEY,
-        "Authorization": f"Bearer {access_token}",
-    }
-    r = requests.get(url, headers=headers, timeout=10)
-    if r.status_code != 200:
-        return None
-    data = r.json() or {}
-    user = data.get("user") or data
-    if not isinstance(user, dict):
-        return None
-    uid = (user.get("id") or "").strip()
-    if not uid:
-        return None
-    return {"id": uid, "email": user.get("email")}
+    return auth_service.supabase_auth_get_user(access_token)
 
 
 def _supabase_get_profile_tier(user_id: str) -> str:
-    """
-    用 service role 直接查 profiles.tier（安全、稳定）
-    """
-    _ensure_supabase_env_for_db()
-
-    # PostgREST: /rest/v1/<table>
-    url = f"{SUPABASE_URL}/rest/v1/profiles"
-    headers = {
-        "apikey": SUPABASE_SERVICE_ROLE_KEY,
-        "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
-        "Content-Type": "application/json",
-    }
-    params = {
-        "select": "tier",
-        "id": f"eq.{user_id}",
-        "limit": "1",
-    }
-    r = requests.get(url, headers=headers, params=params, timeout=10)
-    if r.status_code != 200:
-        # 查不到/异常都按 free 兜底
-        return "free"
-    rows = r.json() or []
-    if not rows:
-        return "free"
-    tier = (rows[0].get("tier") or "free").strip().lower()
-    # ✅ 允许的 tier 白名单，避免脏数据
-    if tier not in ("free", "alpha_base", "alpha_pro"):
-        return "free"
-    return tier
+    return auth_service.supabase_get_profile_tier(user_id)
 
 def resolve_user_and_tier(request: Request) -> dict:
-    """
-    用于“可匿名访问”的路由（比如 /api/quota/me）：
-    - 无 Authorization：匿名 -> is_authed False
-    - 有 Authorization 但 token 无效：不抛 401，按匿名处理（避免前端循环 401）
-    - token 有效：
-        1) 解析 user_id/email
-        2) profiles upsert 兜底（确保行存在）
-        3) 读取 profiles.tier（无则 free）
-    返回统一结构：
-      {
-        "ok": True,
-        "is_authed": bool,
-        "user_id": str|None,
-        "tier": "free|alpha_base|alpha_pro"
-      }
-    """
-    auth = (request.headers.get("authorization") or request.headers.get("Authorization") or "").strip()
-    if not auth:
-        return {"ok": True, "is_authed": False, "user_id": None, "tier": "free"}
-
-    parts = auth.split()
-    if len(parts) != 2 or parts[0].lower() != "bearer":
-        # 不抛 401，按匿名处理
-        return {"ok": True, "is_authed": False, "user_id": None, "tier": "free"}
-
-    jwt = parts[1].strip()
-    if not jwt:
-        return {"ok": True, "is_authed": False, "user_id": None, "tier": "free"}
-
-    # 1) 验证 token -> user
-    try:
-        user = _supabase_auth_get_user(jwt)
-    except Exception as e:
-        print("[auth] supabase auth get user failed:", e)
-        return {"ok": True, "is_authed": False, "user_id": None, "tier": "free"}
-
-    if not user:
-        return {"ok": True, "is_authed": False, "user_id": None, "tier": "free"}
-
-    user_id = (user.get("id") or "").strip()
-    email = user.get("email") or None
-    if not user_id:
-        return {"ok": True, "is_authed": False, "user_id": None, "tier": "free"}
-
-    # 2) profiles upsert：保证 profiles 有行（止血用）
-    try:
-        _supabase_upsert_profile_row(user_id=user_id, email=email, tier="free")
-    except Exception as e:
-        print("[auth] profiles upsert failed:", e)
-
-    # 3) 读取 profiles.tier（service role）
-    tier = "free"
-    try:
-        tier = _supabase_get_profile_tier(user_id)
-    except Exception as e:
-        print("[auth] profiles tier read failed:", e)
-        tier = "free"
-
-    return {"ok": True, "is_authed": True, "user_id": user_id, "tier": tier}
+    return auth_service.resolve_user_and_tier(request)
 
 
 def require_authed_user(request: Request) -> dict:
-    """
-    Blocking auth guard (required auth):
-    - Must have Authorization: Bearer <token>
-    - Token must resolve to user_id via Supabase Auth
-    - Ensure profiles row exists (id=user_id) to avoid "profiles empty but quota exists" inversion
-    - Tier is resolved from profiles.tier (service role), with in-memory cache
-
-    Returns:
-      { "user_id": "...", "tier": "free|alpha_base|alpha_pro" }
-    """
-    token = _get_bearer_token(request)
-    if not token:
-        raise HTTPException(status_code=401, detail="Missing Authorization Bearer token")
-
-    # 1) Validate token -> user_id
-    try:
-        user_id = _supabase_get_user_id(token)
-    except RuntimeError as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    except Exception:
-        raise HTTPException(status_code=401, detail="Invalid or expired Supabase token")
-
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Invalid or expired Supabase token")
-
-    # 2) Ensure profiles row exists (best-effort)
-    #    说明：这里拿不到 email 也没关系，先把 id 行建起来，避免 profiles 空表导致的割裂
-    try:
-        _supabase_upsert_profile_row(user_id=user_id, email=None, tier="free")
-    except Exception as e:
-        print("[auth] profiles ensure row failed:", e)
-
-    # 3) Cache tier by user_id
-    now = time.time()
-    cached = _TIER_CACHE.get(user_id)
-    if cached and cached[1] > now:
-        return {"user_id": user_id, "tier": cached[0]}
-
-    # 4) Query profiles.tier
-    tier = _supabase_get_profile_tier(user_id)
-
-    # 5) Store cache
-    _TIER_CACHE[user_id] = (tier, now + _TIER_CACHE_TTL_SEC)
-    return {"user_id": user_id, "tier": tier}
+    return auth_service.require_authed_user(request)
 
 
 # =========================
@@ -857,33 +528,7 @@ def _profile_sync_tier_after_payment(*, user_id: str, tier: str):
 
 
 def _supabase_upsert_profile_row(user_id: str, email: str | None = None, tier: str | None = None) -> dict | None:
-    """
-    profiles 的兜底 upsert：确保 profiles 至少存在一行（id=user_id）
-    - 用 POST + on_conflict=id + Prefer: resolution=merge-duplicates
-    - 允许 email 为空（你现在看到 email=null 是正常结果：说明当时拿不到 email）
-    """
-    user_id = (user_id or "").strip()
-    if not user_id:
-        return None
-
-    payload = {"id": user_id}
-    if email is not None:
-        payload["email"] = email
-    if tier is not None:
-        payload["tier"] = tier
-
-    url = _sb_rest_url("profiles")  # 如果你有常量，如 PROFILES_TABLE，就替换成常量
-    params = "on_conflict=id"
-
-    # PostgREST: /rest/v1/profiles?on_conflict=id
-    full_url = f"{url}?{params}"
-
-    # 关键：Prefer resolution=merge-duplicates 才是 upsert
-    headers_prefer = "resolution=merge-duplicates,return=representation"
-    rows = _sb_post_json(full_url, payload, prefer=headers_prefer)
-    if rows and isinstance(rows, list):
-        return rows[0]
-    return None
+    return auth_service.supabase_upsert_profile_row(user_id=user_id, email=email, tier=tier)
 
 
 def _tier_from_price_id(price_id: str) -> str:
@@ -1295,27 +940,27 @@ BILLING_TABLE_CUSTOMERS = billing_core.BILLING_TABLE_CUSTOMERS
 BILLING_TABLE_SUBSCRIPTIONS = billing_core.BILLING_TABLE_SUBSCRIPTIONS
 
 _must_env = billing_core._must_env
-_tier_monthly_limit = billing_core._tier_monthly_limit
-_yyyymm_utc_now = billing_core._yyyymm_utc_now
-_supabase_admin_headers = billing_core._supabase_admin_headers
-_supabase_get_quota_row = billing_core._supabase_get_quota_row
-_utc_now_iso = billing_core._utc_now_iso
-_supabase_upsert_quota_row = billing_core._supabase_upsert_quota_row
-_supabase_patch_quota_row = billing_core._supabase_patch_quota_row
-_quota_sync_after_payment = billing_core._quota_sync_after_payment
-_quota_ensure_row = billing_core._quota_ensure_row
+_tier_monthly_limit = quota_service.tier_monthly_limit
+_yyyymm_utc_now = quota_service.yyyymm_utc_now
+_supabase_admin_headers = supabase_client.supabase_admin_headers
+_supabase_get_quota_row = quota_service.supabase_get_quota_row
+_utc_now_iso = quota_service.utc_now_iso
+_supabase_upsert_quota_row = quota_service.supabase_upsert_quota_row
+_supabase_patch_quota_row = quota_service.supabase_patch_quota_row
+_quota_sync_after_payment = quota_service.quota_sync_after_payment
+_quota_ensure_row = quota_service.quota_ensure_row
 
-_sb_rest_url = billing_core._sb_rest_url
-_sb_rpc_url = billing_core._sb_rpc_url
-_sb_get_json = billing_core._sb_get_json
-_sb_post_json = billing_core._sb_post_json
-_sb_patch_json = billing_core._sb_patch_json
+_sb_rest_url = supabase_client.sb_rest_url
+_sb_rpc_url = supabase_client.sb_rpc_url
+_sb_get_json = supabase_client.sb_get_json
+_sb_post_json = supabase_client.sb_post_json
+_sb_patch_json = supabase_client.sb_patch_json
 _tier_from_price_id = billing_core._tier_from_price_id
 
-_supabase_get_profile_tier = billing_core._supabase_get_profile_tier
+_supabase_get_profile_tier = auth_service.supabase_get_profile_tier
 _supabase_patch_profile_tier = billing_core._supabase_patch_profile_tier
 _profile_sync_tier_after_payment = billing_core._profile_sync_tier_after_payment
-_supabase_upsert_profile_row = billing_core._supabase_upsert_profile_row
+_supabase_upsert_profile_row = auth_service.supabase_upsert_profile_row
 
 _sb_webhook_event_exists = billing_core._sb_webhook_event_exists
 _sb_webhook_event_insert = billing_core._sb_webhook_event_insert

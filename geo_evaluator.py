@@ -1007,7 +1007,8 @@ def geo_score_pipeline(
             objective=obj,
         )
 
-        latency_ms = (time.time() - start_ts) * 1000.0
+        latency_ms = int(round((time.time() - start_ts) * 1000))
+
 
         raw_debug = {
             "subjective_raw_1_20": subj,
@@ -1051,7 +1052,7 @@ def geo_score_pipeline(
         return out
 
     except Exception as e:
-        latency_ms = (time.time() - start_ts) * 1000.0
+        latency_ms = int(round((time.time() - start_ts) * 1000))
         return {
             "ok": False,
             "error": f"geo_score_pipeline error: {e}",
