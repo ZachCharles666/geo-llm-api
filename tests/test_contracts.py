@@ -29,6 +29,27 @@ def test_routes_exist(client):
         assert expected in paths
 
 
+@pytest.mark.parametrize(
+    "secret",
+    [
+        "",
+        "test-secret",
+    ],
+)
+def test_paddle_webhook_missing_signature_or_secret(client, monkeypatch, secret):
+    monkeypatch.setenv("PAYMENT_PROVIDER", "paddle")
+    if secret:
+        monkeypatch.setenv("PADDLE_WEBHOOK_SECRET", secret)
+    else:
+        monkeypatch.delenv("PADDLE_WEBHOOK_SECRET", raising=False)
+
+    response = client.post("/api/billing/webhook", content=b"{}")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload.get("ok") is False
+    assert payload.get("error")
+
+
 def test_quota_me_no_auth_behavior(client):
     response = client.get("/api/quota/me")
     assert response.status_code == 200
@@ -94,3 +115,22 @@ def test_geo_score_triggers_quota_consume(client, monkeypatch):
     data = response.json()
     assert "ok" in data
     assert len(consume_calls) >= 1
+
+
+def test_billing_checkout_paddle_controlled_failure(client, monkeypatch):
+    monkeypatch.setenv("PAYMENT_PROVIDER", "paddle")
+
+    payload = {
+        "tier": "alpha_base",
+        "user_id": "test-user",
+        "email": "test@example.com",
+    }
+
+    response = client.post("/api/billing/checkout", json=payload)
+
+    assert response.status_code != 500
+    data = response.json()
+    assert "ok" in data
+    assert data["ok"] is False
+    assert isinstance(data.get("error"), str)
+    assert data["error"]
