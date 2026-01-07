@@ -18,7 +18,7 @@ def tier_monthly_limit(tier: str) -> int:
 
 
 def yyyymm_utc_now() -> str:
-    return datetime.utcnow().strftime("%Y%m")
+    return datetime.now(timezone.utc).strftime("%Y%m")
 
 
 def utc_now_iso():
